@@ -14,7 +14,9 @@
   var LS_FUEL_PERC = 'tcp_fuel_perc';
   var LS_TOKEN     = 'tcp_gcc_token';
   var GIST_ID      = '93f3fe07c908d94f152c56ad805202f5';
-  var GIST_FILE    = 'tcp_listino.json';
+  var GIST_FILE      = 'tcp_listino.json';
+  var GIST_FILE_BASE  = 'tcp_listino_base.json';
+  var GIST_FILE_ADD   = 'tcp_addizionali.json';
   var LS_LISTINO_BASE = 'tcp_listino_base';
   var LS_VETTORI      = 'tcp_vettori';
   var LS_ADDIZIONALI  = 'tcp_addizionali';
@@ -610,21 +612,355 @@
   }
 
 
+  // ═══════════════════════════════════════════════
+  //  TARIFFARIO C.R.T. — POPUP COMPLETO
+  // ═══════════════════════════════════════════════
+
   function apriTariffarioCRT() {
     panel.style.display = 'none';
-    var raw = localStorage.getItem(LS_LISTINO_BASE);
-    var n = 0; try{if(raw)n=(JSON.parse(raw).rows||[]).length;}catch(e){}
-    alert('Tariffario C.R.T: ' + n + ' tariffe.\nImportazione in arrivo.');
+
+    var lsData = { rows: [] };
+    try { var rawCRT = localStorage.getItem(LS_LISTINO_BASE); if (rawCRT) lsData = JSON.parse(rawCRT); }
+    catch(e) { localStorage.removeItem(LS_LISTINO_BASE); }
+    var rows = lsData.rows || [];
+
+    var nLIV = rows.filter(function(r){ return r.porto === 'ITLIV'; }).length;
+    var nSPE = rows.filter(function(r){ return r.porto === 'ITSPE'; }).length;
+    var nGOA = rows.filter(function(r){ return r.porto === 'ITGOA'; }).length;
+
+    var cssG =
+      'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}' +
+      '#topbar{display:flex;align-items:center;justify-content:space-between;background:#8e44ad;color:white;padding:10px 18px;gap:10px;position:sticky;top:0;z-index:100}' +
+      '#topbar h2{margin:0;font-size:14px;white-space:nowrap}' +
+      '#topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}' +
+      '#tabs{display:flex;gap:6px;flex-shrink:0}' +
+      '.tab-btn{padding:5px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:rgba(255,255,255,.2);color:white}' +
+      '.tab-btn.active{background:white;color:#8e44ad}' +
+      '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:200px}' +
+      '.btn-top{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap}' +
+      '#btn-nuova{background:#27ae60;color:white}' +
+      '#btn-export{background:#16a085;color:white}' +
+      '#btn-carica-excel{background:#2980b9;color:white}' +
+      '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 62px);box-sizing:border-box}' +
+      'table{width:100%;border-collapse:collapse;font-size:11px}' +
+      'th{background:#8e44ad;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}' +
+      'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}' +
+      'tr:hover td{background:#f5eef8}' +
+      '.tc{color:#27ae60;font-weight:bold}.tna{color:#ddd}' +
+      '#nrows{font-size:11px;color:#888;margin-top:8px}' +
+      '#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}' +
+      '#overlay.show{display:flex}' +
+      '#modale{background:white;border-radius:10px;padding:24px;width:500px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.3)}' +
+      '#modale h3{margin:0 0 4px;color:#8e44ad;font-size:15px}' +
+      '.sep{height:1px;background:#eee;margin:10px 0}' +
+      '.fg{display:grid;grid-template-columns:1fr 1fr;gap:8px}' +
+      '.fg label{font-size:11px;color:#555;font-weight:bold;display:flex;flex-direction:column;gap:3px}' +
+      '.fg input,.fg select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box;width:100%}' +
+      '.full{grid-column:1/-1}' +
+      '.mbtns{margin-top:14px;display:flex;justify-content:flex-end;gap:8px}' +
+      '.mbtns button{padding:8px 18px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold}' +
+      '.btn-save{background:#27ae60;color:white}.btn-cancel{background:#bdc3c7;color:#333}' +
+      '.be{padding:3px 7px;border:none;background:#8e44ad;color:white;border-radius:3px;cursor:pointer;font-size:11px;margin-right:2px}' +
+      '.bd{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}';
+
+    var scriptData =
+      'var _rows=' + JSON.stringify(rows) + ';' +
+      'var _LS="tcp_listino_base";' +
+      'var _GIST_ID="93f3fe07c908d94f152c56ad805202f5";' +
+      'var _GIST_FILE="tcp_listino_base.json";' +
+      'var _editIdx=null;' +
+      'var _currentPorto="all";';
+
+    var scriptLogic =
+      'function pushGistCRT(rows){' +
+        'var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;' +
+        'fetch("https://api.github.com/gists/"+_GIST_ID,{' +
+          'method:"PATCH",' +
+          'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},' +
+          'body:JSON.stringify({files:{[_GIST_FILE]:{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})' +
+        '}).catch(function(){});' +
+      '}' +
+
+      'function renderTable(){' +
+        'var filter=(document.getElementById("search").value||"").toLowerCase();' +
+        'var html="";var count=0;' +
+        '_rows.forEach(function(r,i){' +
+          'if(_currentPorto!=="all"&&r.porto!==_currentPorto)return;' +
+          'var s=[r.porto||"",r.cap||"",r.prov||"",r.localita||"",r.note||""].join(" ").toLowerCase();' +
+          'if(filter&&!s.includes(filter))return;' +
+          'count++;' +
+          'function tc(f){return r[f]?"<td class=\'tc\'>"+r[f]+"</td>":"<td class=\'tna\'>-</td>";}' +
+          'html+="<tr>";' +
+          'html+="<td style=\'color:#aaa;font-size:10px\'>"+i+"</td>";' +
+          'html+="<td style=\'font-weight:bold;color:#8e44ad\'>"+(r.porto||"")+"</td>";' +
+          'html+="<td>"+(r.cap||"")+"</td>";' +
+          'html+="<td>"+(r.prov||"")+"</td>";' +
+          'html+="<td>"+(r.localita||"")+"</td>";' +
+          'html+="<td style=\'text-align:right;color:#555\'>"+(r.dist_km||"")+"</td>";' +
+          'html+=tc("costo_20");html+=tc("costo_40");' +
+          'html+="<td style=\'color:#888;font-size:10px\'>"+(r.note||"")+"</td>";' +
+          'html+="<td><button class=\'be\' data-i=\'"+i+"\'>&#x270F;</button><button class=\'bd\' data-i=\'"+i+"\'>&#x1F5D1;</button></td>";' +
+          'html+="</tr>";' +
+        '});' +
+        'document.getElementById("tbody").innerHTML=html;' +
+        'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+_rows.length+" tariffe";' +
+      '}' +
+
+      'function apriForm(idx){' +
+        '_editIdx=idx;' +
+        'var r=idx>=0?_rows[idx]:{};' +
+        'document.getElementById("m-titolo").textContent=idx>=0?"Modifica tariffa":"Nuova tariffa";' +
+        '["porto","cap","prov","localita","dist_km","costo_20","costo_40","note"].forEach(function(f){' +
+          'var el=document.getElementById("f-"+f.replace(/_/g,"-"));' +
+          'if(el)el.value=r[f]||"";' +
+        '});' +
+        'document.getElementById("overlay").classList.add("show");' +
+      '}' +
+
+      'function chiudiForm(){document.getElementById("overlay").classList.remove("show");_editIdx=null;}' +
+
+      'function salvaForm(){' +
+        'var r={};' +
+        '["porto","cap","prov","localita","dist_km","costo_20","costo_40","note"].forEach(function(f){' +
+          'var el=document.getElementById("f-"+f.replace(/_/g,"-"));' +
+          'r[f]=el?el.value.trim():"";' +
+        '});' +
+        'if(!r.porto){alert("Seleziona il porto.");return;}' +
+        'if(_editIdx>=0){_rows[_editIdx]=r;}else{_rows.push(r);}' +
+        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;d.loaded_at=new Date().toISOString();localStorage.setItem(_LS,JSON.stringify(d));}catch(e){}' +
+        'pushGistCRT(_rows);chiudiForm();renderTable();' +
+      '}' +
+
+      'function cancellaRiga(idx){' +
+        'if(!confirm("Cancellare questa tariffa?"))return;' +
+        '_rows.splice(idx,1);' +
+        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;localStorage.setItem(_LS,JSON.stringify(d));}catch(e){}' +
+        'pushGistCRT(_rows);renderTable();' +
+      '}' +
+
+      'function esportaExcel(){' +
+        'var hdr=[["porto","cap","prov","localita","dist_km","costo_20","costo_40","note"]];' +
+        '_rows.forEach(function(r){hdr.push([r.porto||"",r.cap||"",r.prov||"",r.localita||"",r.dist_km||"",r.costo_20||"",r.costo_40||"",r.note||""]);});' +
+        'var wb=XLSX.utils.book_new();' +
+        'XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hdr),"CRT");' +
+        'XLSX.writeFile(wb,"tariffario_crt_"+new Date().toISOString().slice(0,10)+".xlsx");' +
+      '}' +
+
+      'document.querySelectorAll(".tab-btn").forEach(function(b){' +
+        'b.addEventListener("click",function(){' +
+          'document.querySelectorAll(".tab-btn").forEach(function(x){x.classList.remove("active");});' +
+          'this.classList.add("active");' +
+          '_currentPorto=this.dataset.porto;' +
+          'renderTable();' +
+        '});' +
+      '});' +
+
+      'var _inputExcel=document.createElement("input");' +
+      '_inputExcel.type="file";_inputExcel.accept=".xlsx,.xls";_inputExcel.style.display="none";' +
+      'document.body.appendChild(_inputExcel);' +
+      'var _PORTO_MAP={"Livorno":"ITLIV","La Spezia":"ITSPE","Genova":"ITGOA"};' +
+
+      '_inputExcel.addEventListener("change",function(){' +
+        'var f=_inputExcel.files[0];if(!f)return;' +
+        'var reader=new FileReader();' +
+        'reader.onload=function(ev){' +
+          'try{' +
+            'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});' +
+            'var nuove=[];var portiImportati=[];' +
+            'wb.SheetNames.forEach(function(sn){' +
+              'var porto=_PORTO_MAP[sn];if(!porto)return;' +
+              'portiImportati.push(porto);' +
+              'var righe=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:""});' +
+              'righe.forEach(function(row){' +
+                'nuove.push({' +
+                  'porto:porto,' +
+                  'cap:(row["CAP"]||row["cap"]||"").toString().trim(),' +
+                  'prov:(row["Pro/Prov"]||row["prov"]||"").toString().trim(),' +
+                  'localita:(row["Localit\u00e0"]||row["Localita"]||row["localita"]||"").toString().trim(),' +
+                  'dist_km:(row["Dist KM A/R"]||row["dist_km"]||"").toString().trim(),' +
+                  'costo_20:(row["20\'"]||row["costo_20"]||"").toString().trim(),' +
+                  'costo_40:(row["40\'/20 HT"]||row["40\'"]||row["costo_40"]||"").toString().trim(),' +
+                  'note:""' +
+                '});' +
+              '});' +
+            '});' +
+            '_rows=_rows.filter(function(r){return portiImportati.indexOf(r.porto)===-1;}).concat(nuove);' +
+            'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;d.loaded_at=new Date().toISOString();localStorage.setItem(_LS,JSON.stringify(d));}catch(er){}' +
+            'pushGistCRT(_rows);renderTable();' +
+            'alert("Importate "+nuove.length+" tariffe da "+portiImportati.join(", ")+".");' +
+          '}catch(err){alert("Errore lettura: "+err.message);}' +
+        '};' +
+        'reader.readAsArrayBuffer(f);' +
+      '});' +
+
+      'document.addEventListener("click",function(e){' +
+        'if(e.target.id==="btn-nuova"){apriForm(-1);}' +
+        'if(e.target.id==="btn-export"){esportaExcel();}' +
+        'if(e.target.id==="btn-carica-excel"){_inputExcel.value="";_inputExcel.click();}' +
+        'if(e.target.classList.contains("be")){apriForm(parseInt(e.target.dataset.i));}' +
+        'if(e.target.classList.contains("bd")){cancellaRiga(parseInt(e.target.dataset.i));}' +
+        'if(e.target.id==="btn-annulla"||e.target.id==="overlay"){chiudiForm();}' +
+        'if(e.target.id==="btn-salva"){salvaForm();}' +
+      '});' +
+
+      'document.getElementById("search").addEventListener("input",renderTable);' +
+      'renderTable();';
+
+    var thH =
+      '<th>#</th><th>Porto</th><th>CAP</th><th>Pro/Prov</th>' +
+      '<th>Localit\u00e0</th><th>KM A/R</th>' +
+      '<th>20\'</th><th>40\'/HT</th><th>Note</th><th>Azioni</th>';
+
+    var popup = window.open('', 'tcp_tariffario_crt', 'width=1100,height=700,scrollbars=yes,resizable=yes');
+    popup.document.write(
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tariffario C.R.T.<\/title>' +
+      '<style>' + cssG + '<\/style><\/head><body>' +
+      '<div id="topbar">' +
+        '<h2>&#x1F4CA; Tariffario C.R.T.<\/h2>' +
+        '<div id="tabs">' +
+          '<button class="tab-btn active" data-porto="all">Tutti (' + rows.length + ')<\/button>' +
+          '<button class="tab-btn" data-porto="ITLIV">Livorno (' + nLIV + ')<\/button>' +
+          '<button class="tab-btn" data-porto="ITSPE">La Spezia (' + nSPE + ')<\/button>' +
+          '<button class="tab-btn" data-porto="ITGOA">Genova (' + nGOA + ')<\/button>' +
+        '<\/div>' +
+        '<div id="topbar-right">' +
+          '<input id="search" placeholder="\uD83D\uDD0D Filtra per localit\u00e0, CAP, prov...">' +
+          '<button class="btn-top" id="btn-carica-excel">&#x1F4C2; Carica Excel<\/button>' +
+          '<button class="btn-top" id="btn-nuova">&#x2795; Nuova tariffa<\/button>' +
+          '<button class="btn-top" id="btn-export">&#x1F4BE; Esporta Excel<\/button>' +
+        '<\/div>' +
+      '<\/div>' +
+      '<div id="table-wrap">' +
+        '<table><thead><tr>' + thH + '<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table>' +
+        '<div id="nrows"><\/div>' +
+      '<\/div>' +
+      '<div id="overlay">' +
+        '<div id="modale">' +
+          '<h3 id="m-titolo">Nuova tariffa<\/h3>' +
+          '<div class="sep"><\/div>' +
+          '<div class="fg">' +
+            '<label>Porto' +
+              '<select id="f-porto">' +
+                '<option value="">-- seleziona --<\/option>' +
+                '<option value="ITLIV">Livorno (ITLIV)<\/option>' +
+                '<option value="ITSPE">La Spezia (ITSPE)<\/option>' +
+                '<option value="ITGOA">Genova (ITGOA)<\/option>' +
+              '<\/select>' +
+            '<\/label>' +
+            '<label>Dist KM A/R<input type="number" id="f-dist-km" placeholder="es. 240"><\/label>' +
+            '<label>CAP<input type="text" id="f-cap" placeholder="es. 57100" maxlength="5"><\/label>' +
+            '<label>Pro/Prov<input type="text" id="f-prov" placeholder="es. LI" maxlength="4"><\/label>' +
+            '<label class="full">Localit\u00e0<input type="text" id="f-localita" placeholder="es. Livorno"><\/label>' +
+            '<label>Costo 20\' (&euro;)<input type="number" id="f-costo-20" placeholder="es. 100"><\/label>' +
+            '<label>Costo 40\'/HT (&euro;)<input type="number" id="f-costo-40" placeholder="es. 150"><\/label>' +
+            '<label class="full">Note<input type="text" id="f-note" placeholder="annotazioni libere"><\/label>' +
+          '<\/div>' +
+          '<div class="mbtns">' +
+            '<button class="btn-cancel" id="btn-annulla">Annulla<\/button>' +
+            '<button class="btn-save" id="btn-salva">&#x1F4BE; Salva<\/button>' +
+          '<\/div>' +
+        '<\/div>' +
+      '<\/div>' +
+      '<scr' + 'ipt>' + scriptData + '<\/scr' + 'ipt>' +
+      '<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr' + 'ipt>' +
+      '<scr' + 'ipt>' + scriptLogic + '<\/scr' + 'ipt>' +
+      '<\/body><\/html>'
+    );
+    popup.document.close();
   }
+
+  // ═══════════════════════════════════════════════
+  //  GESTIONE VETTORI — stub
+  // ═══════════════════════════════════════════════
 
   function apriGestioneVettori() {
     panel.style.display = 'none';
     alert('Gestione Vettori in arrivo.');
   }
 
+  // ═══════════════════════════════════════════════
+  //  ADDIZIONALI — OVERLAY IN-PAGE
+  // ═══════════════════════════════════════════════
+
   function apriAddizionali() {
     panel.style.display = 'none';
-    alert('Gestione Addizionali in arrivo.');
+
+    var savedAdd = {};
+    try {
+      var rawAdd = localStorage.getItem(LS_ADDIZIONALI);
+      if (rawAdd) savedAdd = JSON.parse(rawAdd);
+    } catch(e) { localStorage.removeItem(LS_ADDIZIONALI); }
+
+    var overlayAdd = document.createElement('div');
+    overlayAdd.style.cssText = [
+      'position:fixed','inset:0','background:rgba(0,0,0,.5)',
+      'z-index:2147483647','display:flex','align-items:center',
+      'justify-content:center','font-family:Arial,sans-serif'
+    ].join(';');
+
+    var modalAdd = document.createElement('div');
+    modalAdd.style.cssText = [
+      'background:white','border-radius:10px','padding:24px',
+      'width:480px','max-width:95vw','max-height:90vh','overflow-y:auto',
+      'box-shadow:0 8px 32px rgba(0,0,0,.3)'
+    ].join(';');
+
+    var ADD_FIELDS = [
+      { key:'hc',           label:'&#x2744; HC Supplemento (\u20ac)',  placeholder:'es. 30' },
+      { key:'reefer_perc',  label:'&#x2744; Reefer % sul base',        placeholder:'es. 20' },
+      { key:'reefer_min',   label:'&#x2744; Reefer minimo (\u20ac)',    placeholder:'es. 80' },
+      { key:'adr',          label:'&#x26A0; ADR (\u20ac)',              placeholder:'es. 50' },
+      { key:'seconda_presa',label:'&#x1F4CD; 2\u00aa Presa (\u20ac)',   placeholder:'es. 60' },
+      { key:'notte',        label:'&#x1F319; Notte (\u20ac)',           placeholder:'es. 65' },
+      { key:'vgm',          label:'&#x2696; VGM (\u20ac)',              placeholder:'es. 0'  },
+      { key:'fuel_perc',    label:'&#x26FD; Fuel Surcharge %',          placeholder:'es. 15' }
+    ];
+
+    var fieldsHtml = '';
+    ADD_FIELDS.forEach(function(f){
+      fieldsHtml +=
+        '<label style="font-size:11px;font-weight:bold;color:#555;display:flex;flex-direction:column;gap:3px;">' +
+        f.label +
+        '<input type="number" data-key="' + f.key + '" value="' + (savedAdd[f.key]||'') + '" placeholder="' + f.placeholder + '" ' +
+        'style="padding:7px 9px;border:1px solid #ccc;border-radius:4px;font-size:13px;">' +
+        '</label>';
+    });
+
+    modalAdd.innerHTML =
+      '<div style="font-weight:bold;color:#c0392b;font-size:15px;margin-bottom:4px">&#x2695; Addizionali Listino Base</div>' +
+      '<div style="font-size:11px;color:#888;margin-bottom:14px">Valori applicati al tariffario C.R.T. per il calcolo del costo totale</div>' +
+      '<div style="height:1px;background:#eee;margin-bottom:14px"></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">' + fieldsHtml + '</div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:8px">' +
+        '<button id="gcc-add-cancel" style="padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#bdc3c7;font-size:13px;font-weight:bold;">Annulla</button>' +
+        '<button id="gcc-add-save" style="padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#c0392b;color:white;font-size:13px;font-weight:bold;">&#x1F4BE; Salva</button>' +
+      '</div>';
+
+    overlayAdd.appendChild(modalAdd);
+    document.body.appendChild(overlayAdd);
+
+    function chiudiAdd() { document.body.removeChild(overlayAdd); }
+
+    document.getElementById('gcc-add-save').addEventListener('click', function(){
+      var data = {};
+      modalAdd.querySelectorAll('input[data-key]').forEach(function(el){
+        data[el.dataset.key] = el.value.trim();
+      });
+      localStorage.setItem(LS_ADDIZIONALI, JSON.stringify(data));
+      var tokenAdd = localStorage.getItem(LS_TOKEN);
+      if (tokenAdd) {
+        fetch('https://api.github.com/gists/' + GIST_ID, {
+          method: 'PATCH',
+          headers: { 'Authorization': 'token ' + tokenAdd, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: { 'tcp_addizionali.json': { content: JSON.stringify(data, null, 2) } } })
+        }).catch(function(){});
+      }
+      chiudiAdd();
+      alert('Addizionali salvati!');
+    });
+
+    document.getElementById('gcc-add-cancel').addEventListener('click', chiudiAdd);
+    overlayAdd.addEventListener('click', function(e){ if (e.target === overlayAdd) chiudiAdd(); });
   }
 
   // ═══════════════════════════════════════════════
