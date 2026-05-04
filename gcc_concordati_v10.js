@@ -995,7 +995,7 @@
           'html+="<td style=\'color:#888;font-size:10px\'>"+v("note")+"</td>";'+
           'html+="<td style=\'color:#aaa;font-size:10px\'>"+v("data_validita")+"</td>";'+
           'html+="<td style=\'font-size:10px;font-weight:bold;color:#1a5276\'>"+v("operatore")+"</td>";'+
-          'html+="<td><button class=\'be\' data-i=\'"+i+"\'>&#x270F;</button><button class=\'bd\' data-i=\'"+i+"\'>&#x1F5D1;</button></td>";'+
+          'html+="<td><button class=\'be\' data-i=\'"+i+"\'>&#x270F;</button><button class=\'bd\' data-i=\'"+i+"\'>Canc</button></td>";'+
           'html+="</tr>";'+
         '});'+
         'document.getElementById("tbody").innerHTML=html;'+
@@ -1091,11 +1091,12 @@
         'if(e.target.id==="btn-carica-excel"){_inputExcel.value="";_inputExcel.click();}'+
         'if(e.target.id==="btn-nuova"){apriForm(-1);}'+
         'if(e.target.id==="btn-export-full"){esportaExcelFull();}'+
-        'if(e.target.classList.contains("be")){apriForm(parseInt(e.target.dataset.i));}'+
-        'if(e.target.classList.contains("bd")){cancellaRiga(parseInt(e.target.dataset.i));}'+
-        'if(e.target.id==="btn-annulla"||e.target.id==="overlay"){chiudiForm();}'+
-        'if(e.target.id==="btn-salva"){salvaForm();}'+
-        'if(e.target.id==="m-fuel-tog"){_mFuelOn=!_mFuelOn;e.target.textContent=_mFuelOn?"SI":"NO";e.target.classList.toggle("on",_mFuelOn);}'+
+        'var tg=(e.target&&e.target.classList)?e.target:(e.target.parentNode||e.target);'+
+        'if(tg.classList.contains("be")){apriForm(parseInt(tg.dataset.i));return;}'+
+        'if(tg.classList.contains("bd")){cancellaRiga(parseInt(tg.dataset.i));return;}'+
+        'if(tg.id==="btn-annulla"||tg.id==="overlay"){chiudiForm();return;}'+
+        'if(tg.id==="btn-salva"){salvaForm();return;}'+
+        'if(tg.id==="m-fuel-tog"){_mFuelOn=!_mFuelOn;tg.textContent=_mFuelOn?"SI":"NO";tg.classList.toggle("on",_mFuelOn);return;}'+
       '});'+
       'document.getElementById("search").addEventListener("input",renderTable);'+
 
@@ -1405,7 +1406,7 @@
         '<td>'+
           '<button class="btn-ctr-badge" data-gi="'+gi+'" data-ctrs="'+ctrsJson+'" '+
             'style="padding:4px 10px;border:none;background:#2471a3;color:white;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;white-space:nowrap;">'+
-            '&#x1F4E6; '+n+(n===1?' container':' containers')+
+            '&#x1F4E6;&#xFE0E; '+n+(n===1?' ctr':' ctrs')+
           '<\/button>'+
         '</td>'+
         '<td><span style="display:inline-block;background:#eaf0fb;color:#1a5276;font-weight:bold;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap;">'+g.equip+'<\/span><\/td>'+
@@ -1458,7 +1459,7 @@
         '<tr id="mrow_'+mgi+'">'+
         '<td><span style="display:inline-block;background:#c0392b;color:white;'+
           'font-weight:bold;font-size:11px;padding:2px 10px;border-radius:5px;white-space:nowrap">'+
-          '&#x1F4E6; '+n+(n===1?' container':' containers')+
+          '&#x1F4E6;&#xFE0E; '+n+(n===1?' ctr':' ctrs')+
         '</span></td>'+
         '<td><span style="display:inline-block;background:#fde8e8;color:#c0392b;'+
           'font-weight:bold;font-size:11px;padding:2px 8px;border-radius:4px">'+
@@ -1709,7 +1710,7 @@
           'return "<div class=\'ctr-item\'>"+'+
             '"<span class=\'ctr-nr\'>"+c.containerNr+"<\/span>"+'+
             '"<span class=\'ctr-lef\'>"+(c.lef||c.orderId)+"<\/span>"+'+
-            '"<button class=\'ctr-nav btn-nav-scroll\' data-orderid=\'"+c.orderId+"\' data-containernr=\'"+c.containerNr+"\'>&#x1F50D; Vai<\/button>"+'+
+            '"<button class=\'ctr-nav btn-nav-scroll\' data-orderid=\'"+c.orderId+"\' data-containernr=\'"+c.containerNr+"\'>Vai<\/button>"+'+
           '"<\/div>";'+
         '}).join("");'+
         /* posiziona sotto il badge */
@@ -1724,23 +1725,26 @@
         '_ddOpen=false;'+
       '}'+
       'document.addEventListener("click",function(e){'+
-        'if(e.target.classList.contains("btn-ctr-badge")){'+
+        'var tb=(e.target&&e.target.classList)?e.target:(e.target.parentNode||e.target);'+
+        'if(tb.classList.contains("btn-ctr-badge")){'+
           'var dd=document.getElementById("ctr-dropdown");'+
           'if(dd.classList.contains("show")&&_ddOpen){chiudiDropdown();return;}'+
-          'apriDropdown(e.target); return;'+
+          'apriDropdown(tb); return;'+
         '}'+
-        'if(!e.target.closest("#ctr-dropdown"))chiudiDropdown();'+
+        'var inDD=false;var nd=e.target;while(nd){if(nd.id==="ctr-dropdown"){inDD=true;break;}nd=nd.parentNode;}'+
+        'if(!inDD)chiudiDropdown();'+
       '});'+
       'document.addEventListener("keydown",function(e){if(e.key==="Escape")chiudiDropdown();});'+
 
       /* ── delegazione click globale ── */
       'document.addEventListener("click",function(e){'+
-        'if(e.target.classList.contains("btn-ins")){apriModale(parseInt(e.target.dataset.mgi));}'+
-        'if(e.target.classList.contains("btn-nav-scroll")){scrollToOrder(e.target.dataset.orderid,e.target.dataset.containernr);}'+
-        'if(e.target.classList.contains("btn-modifica")){apriModaleModifica(e.target.dataset.chiave,parseInt(e.target.dataset.gi));}'+
-        'if(e.target.classList.contains("btn-cancella")){cancellaRigaTrovati(e.target.dataset.chiave,parseInt(e.target.dataset.gi));}'+
-        'if(e.target.id==="btn-export"){esportaExcel();}'+
-        'if(e.target.id==="overlay"){chiudiModale();}'+
+        'var t=(e.target&&e.target.classList)?e.target:(e.target.parentNode||e.target);'+
+        'if(t.classList.contains("btn-ins")){apriModale(parseInt(t.dataset.mgi));return;}'+
+        'if(t.classList.contains("btn-nav-scroll")){scrollToOrder(t.dataset.orderid,t.dataset.containernr);return;}'+
+        'if(t.classList.contains("btn-modifica")){apriModaleModifica(t.dataset.chiave,parseInt(t.dataset.gi));return;}'+
+        'if(t.classList.contains("btn-cancella")){cancellaRigaTrovati(t.dataset.chiave,parseInt(t.dataset.gi));return;}'+
+        'if(t.id==="btn-export"){esportaExcel();return;}'+
+        'if(t.id==="overlay"){chiudiModale();return;}'+
       '});'+
 
       /* ── apri modale MODIFICA (trovati) ── */
@@ -1974,9 +1978,10 @@
         'chiudiModaleKm();'+
       '}'+
       'document.addEventListener("click",function(e){'+
-        'if(e.target.classList.contains("btn-km")){apriModaleKm(parseInt(e.target.dataset.mgi));return;}'+
-        'if(e.target.id==="km-btn-annulla"||e.target.id==="km-overlay"){chiudiModaleKm();return;}'+
-        'if(e.target.id==="km-btn-salva"){salvaKm();return;}'+
+        'var tk=(e.target&&e.target.classList)?e.target:(e.target.parentNode||e.target);'+
+        'if(tk.classList.contains("btn-km")){apriModaleKm(parseInt(tk.dataset.mgi));return;}'+
+        'if(tk.id==="km-btn-annulla"||tk.id==="km-overlay"){chiudiModaleKm();return;}'+
+        'if(tk.id==="km-btn-salva"){salvaKm();return;}'+
       '});'+
 
       /* ── export excel mancanti ── */
