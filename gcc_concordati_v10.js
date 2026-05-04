@@ -830,11 +830,19 @@
       +'<\/div>'
       +'<\/div><\/div>'
       +'<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'
-      +'<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'
-      +'<scr'+'ipt>'+scriptLogic+'<\/scr'+'ipt>'
       +'<\/body><\/html>'
     );
     popup.document.close();
+    (function() {
+      var _s = popup.document.createElement('script');
+      _s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      _s.onload = function() {
+        var _l = popup.document.createElement('script');
+        _l.textContent = scriptLogic;
+        popup.document.head.appendChild(_l);
+      };
+      popup.document.head.appendChild(_s);
+    })();
   }
 
   function apriGestioneVettori() {
@@ -1203,108 +1211,19 @@
         '<\/div>'+
       '<\/div>'+
       '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
-      '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'+
-      '<scr'+'ipt>'+scriptLogic+'<\/scr'+'ipt>'+
       '<\/body><\/html>'
     );
     popup.document.close();
-  }
-
-
-  // ═══════════════════════════════════════════════
-  //  MATCH CRT — calcola costo da tariffario base
-  // ═══════════════════════════════════════════════
-
-  // Estrae CAP, Provincia e Località da una stringa indirizzo
-  function parseIndirizzoDettaglio(addr) {
-    var cap   = '';
-    var prov  = '';
-    var loc   = '';
-    var mCap  = addr.match(/\b(\d{5})\b/);
-    if (mCap) cap = mCap[1];
-    var mProv = addr.match(/\(([A-Za-z]{2})\)/);
-    if (mProv) prov = mProv[1].toUpperCase();
-    // Località: ultima parola significativa prima del CAP o della prov
-    var pulito = addr
-      .replace(/\b\d{5}\b/, '')
-      .replace(/\([A-Za-z]{2}\)/, '')
-      .replace(/Via |Viale |Corso |Piazza |Largo |Str\. |Strada |Loc\. |Localit. /gi, '')
-      .replace(/,/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    // Prendi la parte dopo eventuale numero civico (es. "Via Roma 12 Firenze" → "Firenze")
-    var parti = pulito.split(' ').filter(function(p) { return p.length > 2 && isNaN(p); });
-    if (parti.length > 0) loc = parti[parti.length - 1];
-    return { cap: cap, prov: prov, loc: loc.toLowerCase() };
-  }
-
-  // Cerca nel tariffario CRT la riga che corrisponde all'indirizzo
-  // Strategia: 1) Località (+ conferma Prov se disponibile), 2) CAP esatto
-  // Restituisce { riga, metodo } o null
-  function cercaCRT(indirizzo, porto, crtRows) {
-    if (!crtRows || crtRows.length === 0) return null;
-    var det = parseIndirizzoDettaglio(indirizzo || '');
-    var righePorto = crtRows.filter(function(r) { return (r.porto || '') === porto; });
-    if (righePorto.length === 0) righePorto = crtRows; // fallback: tutti i porti
-
-    // 1) Cerca per Località (+ conferma Prov)
-    if (det.loc && det.loc.length > 2) {
-      var byLoc = righePorto.filter(function(r) {
-        return (r.localita || '').toLowerCase().indexOf(det.loc) !== -1 ||
-               det.loc.indexOf((r.localita || '').toLowerCase()) !== -1;
-      });
-      if (byLoc.length === 1) return { riga: byLoc[0], metodo: 'loc', label: byLoc[0].localita + (byLoc[0].prov ? ' (' + byLoc[0].prov + ')' : '') };
-      if (byLoc.length > 1 && det.prov) {
-        // Disambigua con provincia
-        var byLocProv = byLoc.filter(function(r) { return (r.prov || '').toUpperCase() === det.prov; });
-        if (byLocProv.length > 0) return { riga: byLocProv[0], metodo: 'loc', label: byLocProv[0].localita + ' (' + byLocProv[0].prov + ')' };
-      }
-      if (byLoc.length > 0) return { riga: byLoc[0], metodo: 'loc', label: byLoc[0].localita + (byLoc[0].prov ? ' (' + byLoc[0].prov + ')' : '') };
-    }
-
-    // 2) Fallback: CAP esatto
-    if (det.cap) {
-      var byCap = righePorto.filter(function(r) { return (r.cap || '').replace(/\s/g,'') === det.cap; });
-      if (byCap.length > 0) return { riga: byCap[0], metodo: 'cap', label: 'CAP ' + det.cap + ' \u2192 ' + byCap[0].localita };
-    }
-
-    return null;
-  }
-
-  // Calcola il costo CRT
-  // Struttura output:
-  //   subtotale = costoBase + fuelAmt  (€280 + €42 fuel 15% = €322)
-  //   addExtra  = addizionali separati (+ €30 HC + €50 ADR ...)
-  function calcolaCRT(rigaCRT, containerType, addizionali) {
-    var ct = containerType;
-    var costoBase = parseFloat(ct.isHC ? (rigaCRT.costo_40 || 0) : (ct.size === '20' ? (rigaCRT.costo_20 || 0) : (rigaCRT.costo_40 || 0)));
-    if (isNaN(costoBase) || costoBase === 0) return null;
-
-    var add      = addizionali || {};
-    var fuelPerc = parseFloat(add.fuel_perc || 0);
-    var fuelAmt  = fuelPerc > 0 ? parseFloat((costoBase * fuelPerc / 100).toFixed(2)) : 0;
-    var subtotale = parseFloat((costoBase + fuelAmt).toFixed(2));
-
-    // Addizionali scorporati dal subtotale
-    var addExtra = [];
-    if (ct.isHC && parseFloat(add.hc || 0) > 0)
-      addExtra.push({ label: 'HC', amt: parseFloat(add.hc) });
-    if (parseFloat(add.adr || 0) > 0)
-      addExtra.push({ label: 'ADR', amt: parseFloat(add.adr) });
-    if (parseFloat(add.seconda_presa || 0) > 0)
-      addExtra.push({ label: '2\u00aa presa', amt: parseFloat(add.seconda_presa) });
-    if (parseFloat(add.notte || 0) > 0)
-      addExtra.push({ label: 'sosta notte', amt: parseFloat(add.notte) });
-    if (parseFloat(add.vgm || 0) > 0)
-      addExtra.push({ label: 'VGM', amt: parseFloat(add.vgm) });
-
-    return {
-      costoBase: costoBase,
-      fuelAmt:   fuelAmt,
-      fuelPerc:  fuelPerc,
-      subtotale: subtotale,
-      addExtra:  addExtra
-    };
+    (function() {
+      var _s = popup.document.createElement('script');
+      _s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      _s.onload = function() {
+        var _l = popup.document.createElement('script');
+        _l.textContent = scriptLogic;
+        popup.document.head.appendChild(_l);
+      };
+      popup.document.head.appendChild(_s);
+    })();
   }
 
   // ═══════════════════════════════════════════════
@@ -1396,80 +1315,10 @@
       });
     })();
 
-    // ── Leggi CRT e addizionali, calcola match per ogni gruppo mancante ──
-    var _crtRows = [];
-    var _addCRT  = {};
-    try {
-      var _rawCRT = localStorage.getItem(LS_LISTINO_BASE);
-      if (_rawCRT) _crtRows = JSON.parse(_rawCRT).rows || [];
-    } catch(e) {}
-    try {
-      var _rawAdd = localStorage.getItem(LS_ADDIZIONALI);
-      if (_rawAdd) _addCRT = JSON.parse(_rawAdd);
-    } catch(e) {}
-    // Leggi KM salvati manualmente (localStorage: tcp_km_tratte)
-    var _kmTratte = {};
-    try {
-      var _rawKm = localStorage.getItem('tcp_km_tratte');
-      if (_rawKm) _kmTratte = JSON.parse(_rawKm);
-    } catch(e) {}
-
-    // Calcola match CRT per ogni gruppo mancante
-    mGruppiM.forEach(function(g) {
-      var indirizzi = g.indirizzi || [];
-      var isDoppia  = indirizzi.length > 1 && (indirizzi[1] || '').trim() !== '';
-      var porto     = g.porto || '';
-
-      // Chiave KM per questa coppia di indirizzi
-      var kmKey = [norm(indirizzi[0]||''), norm(indirizzi[1]||''), norm(porto)].join('|||');
-
-      if (isDoppia) {
-        // Doppia località: cerca prima KM salvati manualmente
-        if (_kmTratte[kmKey]) {
-          var kmSalvati = parseFloat(_kmTratte[kmKey]);
-          // Cerca nel CRT la riga con KM più vicini
-          var rigaKm = null;
-          var diffMin = Infinity;
-          _crtRows.filter(function(r){ return (r.porto||'')=== porto || porto===''; }).forEach(function(r) {
-            var km = parseFloat(r.km || 0);
-            if (km > 0) {
-              var diff = Math.abs(km - kmSalvati);
-              if (diff < diffMin) { diffMin = diff; rigaKm = r; }
-            }
-          });
-          if (rigaKm) {
-            var calc = calcolaCRT(rigaKm, g.containerType, _addCRT);
-            if (calc) {
-              g.crtMatch = { riga: rigaKm, metodo: 'km', label: kmSalvati + ' km A/R → ' + rigaKm.localita };
-              g.crtCalc  = calc;
-            }
-          }
-        }
-        // Se non ci sono KM salvati, segnala che servono KM manuali
-        if (!g.crtMatch) {
-          g.crtNeedKm = true;
-          g.crtKmKey  = kmKey;
-        }
-      } else {
-        // Singola località: cerca nel CRT
-        var addr = indirizzi[0] || '';
-        var match = cercaCRT(addr, porto, _crtRows);
-        if (match) {
-          var calc = calcolaCRT(match.riga, g.containerType, _addCRT);
-          if (calc) {
-            g.crtMatch = match;
-            g.crtCalc  = calc;
-          }
-        }
-      }
-      g.isDoppia = isDoppia;
-      g.kmKey    = kmKey;
-    });
-
     var thCols =
       '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
       '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
-      '<th>Costo CRT</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
+      '<th>Costo</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
 
     // Genera HTML trovati raggruppati
     var htmlTrovati='';
@@ -1514,34 +1363,6 @@
     var htmlMancanti='';
     mGruppiM.forEach(function(g,mgi){
       var n=g.containers.length;
-
-      // Costruisci cella costo CRT
-      var costoCrtHtml = '';
-      if (g.crtCalc) {
-        var c = g.crtCalc;
-        var metodo = g.crtMatch ? g.crtMatch.label : '';
-        // €280 + €42 fuel (15%) = €322
-        var riga1 = '€' + c.costoBase;
-        if (c.fuelAmt > 0) riga1 += ' + €' + c.fuelAmt + ' fuel (' + c.fuelPerc + '%) = €' + c.subtotale;
-        // + €30 HC + €50 ADR ...
-        var riga2 = c.addExtra.map(function(x){ return '+ €' + x.amt + ' ' + x.label; }).join(' ');
-        costoCrtHtml =
-          '<span style="font-weight:bold;color:#8e44ad;font-size:12px">' + riga1 + '</span>' +
-          (riga2 ? '<span style="color:#7f8c8d;font-size:11px"> &nbsp;' + riga2 + '</span>' : '') +
-          '<br><span style="font-size:10px;color:#2980b9;font-style:italic">&#x1F4CC; ' + metodo + '</span>';
-      } else if (g.crtNeedKm) {
-        costoCrtHtml =
-          '<span style="color:#e67e22;font-size:11px">&#x1F69A; Doppia loc. &mdash; </span>' +
-          '<button class="btn-km" data-mgi="' + mgi + '" ' +
-            'style="padding:2px 8px;border:none;background:#e67e22;color:white;border-radius:3px;cursor:pointer;font-size:11px">' +
-            'Inserisci KM' +
-          '</button>';
-      } else if (_crtRows.length === 0) {
-        costoCrtHtml = '<span style="color:#aaa;font-size:11px">Tariffario CRT non caricato</span>';
-      } else {
-        costoCrtHtml = '<span style="color:#c0392b;font-style:italic;font-size:11px">-- no match CRT --</span>';
-      }
-
       htmlMancanti+=
         '<tr id="mrow_'+mgi+'">'+
         '<td><span style="display:inline-block;background:#c0392b;color:white;'+
@@ -1556,10 +1377,10 @@
         '<td>'+g.committente+'</td>'+
         '<td>'+g.traffic+'</td>'+
         '<td>'+g.porto.toUpperCase()+'</td>'+
-        '<td id="mcosto_'+mgi+'" style="white-space:nowrap;line-height:1.6">'+costoCrtHtml+'</td>'+
+        '<td id="mcosto_'+mgi+'" style="color:#c0392b;font-style:italic">-- non trovato --</td>'+
         '<td style="font-size:11px;color:#888" id="mnote_'+mgi+'"></td>'+
         '<td style="color:#aaa;font-size:11px" id="mdata_'+mgi+'"></td>'+
-        '<td class="no-print" style="white-space:nowrap">'+
+        '<td class="no-print">'+
           '<button data-mgi="'+mgi+'" class="btn-ins" '+
             'style="padding:3px 7px;background:#e67e22;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px">'+
             '&#x270F;<\/button>'+
@@ -1633,19 +1454,7 @@
       '}'+
       '#print-header{display:none;margin-bottom:16px;border-bottom:2px solid #1a5276;padding-bottom:8px}'+
       '#print-header h2{margin:0 0 2px;color:#1a5276;font-size:18px}'+
-      '#print-header p{margin:0;font-size:11px;color:#666}'+
-      '#km-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;align-items:center;justify-content:center}'+
-      '#km-overlay.show{display:flex}'+
-      '#km-modale{background:white;border-radius:10px;padding:26px;width:400px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.3);font-family:Arial,sans-serif}'+
-      '#km-modale h3{margin:0 0 6px;color:#e67e22;font-size:15px}'+
-      '#km-modale-sub{font-size:11px;color:#888;margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:10px}'+
-      '#km-modale label{font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px}'+
-      '#km-input{padding:8px 10px;border:1px solid #ccc;border-radius:5px;font-size:16px;width:140px;box-sizing:border-box}'+
-      '#km-hint{font-size:11px;color:#999;margin-top:4px;margin-bottom:14px}'+
-      '#km-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'+
-      '#km-btns button{padding:8px 18px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold}'+
-      '#km-btn-salva{background:#e67e22;color:white}'+
-      '#km-btn-annulla{background:#bdc3c7;color:#333}';
+      '#print-header p{margin:0;font-size:11px;color:#666}';
 
     // scriptData: identico a v9.1 tranne _gruppi aggiunto,
     // apriModaleModifica e cancellaRigaTrovati aggiornati per gi
@@ -1656,9 +1465,6 @@
       'var _gruppi='+JSON.stringify(gruppiOrdine.map(function(k){ return gruppiMap[k]; }))+';'+
       'var _LS_LISTINO="'+LS_LISTINO+'";'+
       'var _LS_FUEL_PERC="'+LS_FUEL_PERC+'";'+
-      'var _LS_KM_TRATTE="tcp_km_tratte";'+
-      'var _crtRowsPopup='+JSON.stringify(_crtRows)+';'+
-      'var _addCRTPopup='+JSON.stringify(_addCRT)+';'+
       'var _idxCorrente=null;'+
       'var _chiaveCorrente=null;'+
       'var _giCorrente=null;'+
@@ -2015,75 +1821,6 @@
         'chiudiModale();'+
       '}'+
 
-      /* ── modale inserimento KM per doppia localita ── */
-      'var _kmModaleOpen=false;'+
-      'var _kmMgi=null;'+
-
-      'function apriModaleKm(mgi){'+
-        '_kmMgi=mgi;'+
-        'var g=_mGruppiM[mgi];'+
-        'var inds=(g.indirizzi||[]).join(" \u2192 ");'+
-        'document.getElementById("km-modale-sub").textContent=inds;'+
-        'document.getElementById("km-input").value="";'+
-        'document.getElementById("km-overlay").classList.add("show");'+
-      '}'+
-      'function chiudiModaleKm(){'+
-        'document.getElementById("km-overlay").classList.remove("show");'+
-        '_kmMgi=null;'+
-      '}'+
-      'function salvaKm(){'+
-        'var km=parseFloat(document.getElementById("km-input").value);'+
-        'if(!km||km<=0){alert("Inserisci un valore KM valido (A/R).");return;}'+
-        'var g=_mGruppiM[_kmMgi];'+
-        // Salva KM in localStorage
-        'var kmTratte={};'+
-        'try{var r=localStorage.getItem(_LS_KM_TRATTE);if(r)kmTratte=JSON.parse(r);}catch(e){}'+
-        'kmTratte[g.kmKey]=km;'+
-        'try{localStorage.setItem(_LS_KM_TRATTE,JSON.stringify(kmTratte));}catch(e){}'+
-        // Cerca nel CRT la riga con KM piu vicini
-        'var porto=g.porto||"";'+
-        'var righePorto=_crtRowsPopup.filter(function(r){return(r.porto||"")===porto;});'+
-        'if(!righePorto.length)righePorto=_crtRowsPopup;'+
-        'var rigaKm=null;var diffMin=Infinity;'+
-        'righePorto.forEach(function(r){'+
-          'var k=parseFloat(r.km||0);'+
-          'if(k>0){var d=Math.abs(k-km);if(d<diffMin){diffMin=d;rigaKm=r;}}'+
-        '});'+
-        'if(!rigaKm){alert("Nessuna riga trovata nel CRT con KM simili a "+km+".");chiudiModaleKm();return;}'+
-        // Calcola costo
-        'var ct=g.containerType;'+
-        'var costoBase=parseFloat(ct.isHC?(rigaKm.costo_40||0):(ct.size==="20"?(rigaKm.costo_20||0):(rigaKm.costo_40||0)));'+
-        'if(!costoBase){alert("La riga CRT trovata non ha costo per questa taglia container.");chiudiModaleKm();return;}'+
-        'var fuelPerc=parseFloat(_addCRTPopup.fuel_perc||0);'+
-        'var fuelAmt=fuelPerc>0?parseFloat((costoBase*fuelPerc/100).toFixed(2)):0;'+
-        'var subtotale=parseFloat((costoBase+fuelAmt).toFixed(2));'+
-        'var addExtra=[];'+
-        'if(ct.isHC&&parseFloat(_addCRTPopup.hc||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.hc+" HC");'+
-        'if(parseFloat(_addCRTPopup.adr||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.adr+" ADR");'+
-        'if(parseFloat(_addCRTPopup.seconda_presa||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.seconda_presa+" 2\u00aa presa");'+
-        'if(parseFloat(_addCRTPopup.notte||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.notte+" sosta notte");'+
-        'if(parseFloat(_addCRTPopup.vgm||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.vgm+" VGM");'+
-        'var riga1="\u20ac"+costoBase;'+
-        'if(fuelAmt>0)riga1+=" + \u20ac"+fuelAmt+" fuel ("+fuelPerc+"%) = \u20ac"+subtotale;'+
-        'var riga2=addExtra.join(" ");'+
-        'var label=km+" km A/R \u2192 "+rigaKm.localita+(rigaKm.prov?" ("+rigaKm.prov+")":"");'+
-        'var costoCrtHtml='+
-          '"<span style=\\"font-weight:bold;color:#8e44ad;font-size:12px\\">"+riga1+"</span>"+'+
-          '(riga2?"<span style=\\"color:#7f8c8d;font-size:11px\\"> &nbsp;"+riga2+"</span>":"")+'+
-          '"<br><span style=\\"font-size:10px;color:#2980b9;font-style:italic\\">&#x1F4CC; "+label+"</span>";'+
-        'var td=document.getElementById("mcosto_"+_kmMgi);'+
-        'var td=document.getElementById("mcosto_"+_kmMgi);'+
-        'if(td)td.innerHTML=costoCrtHtml;'+
-        'chiudiModaleKm();'+
-      '}'+
-
-      /* ── delegazione click per btn-km ── */
-      'document.addEventListener("click",function(e){'+
-        'if(e.target.classList.contains("btn-km")){apriModaleKm(parseInt(e.target.dataset.mgi));return;}'+
-        'if(e.target.id==="km-btn-annulla"||e.target.id==="km-overlay"){chiudiModaleKm();return;}'+
-        'if(e.target.id==="km-btn-salva"){salvaKm();return;}'+
-      '});'+
-
       /* ── export excel mancanti ── */
       'function esportaExcel(){'+
         'var hdr=[["lef","orderId","indirizzi","delivery_place","committente","traffic","containerNr","tipoContainer","porto","costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","fuel","note","data_validita"]];'+
@@ -2174,24 +1911,19 @@
         '<\/div>'+
       '<\/div>'+
 
-      '<div id="km-overlay">'+
-        '<div id="km-modale">'+
-          '<h3>&#x1F69A; Inserisci KM per doppia localit\u00e0<\/h3>'+
-          '<div id="km-modale-sub"><\/div>'+
-          '<label>Kilometri A/R totali<\/label>'+
-          '<input type="number" id="km-input" min="1" step="1" placeholder="es. 320">'+
-          '<div id="km-hint">Inserisci i KM andata e ritorno del giro completo.<br>Il costo verr\u00e0 calcolato dalla riga CRT con KM pi\u00f9 vicini.<\/div>'+
-          '<div id="km-btns">'+
-            '<button id="km-btn-annulla">Annulla<\/button>'+
-            '<button id="km-btn-salva">&#x1F4BE; Calcola e salva<\/button>'+
-          '<\/div>'+
-        '<\/div>'+
-      '<\/div>'+
-      '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'+
-      '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
       '<\/body><\/html>'
     );
     popup.document.close();
+    (function() {
+      var _s = popup.document.createElement('script');
+      _s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      _s.onload = function() {
+        var _l = popup.document.createElement('script');
+        _l.textContent = scriptData;
+        popup.document.head.appendChild(_l);
+      };
+      popup.document.head.appendChild(_s);
+    })();
   }
 
 })();
