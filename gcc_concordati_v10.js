@@ -14,9 +14,9 @@
   var LS_FUEL_PERC = 'tcp_fuel_perc';
   var LS_TOKEN     = 'tcp_gcc_token';
   var GIST_ID      = '93f3fe07c908d94f152c56ad805202f5';
-  var GIST_FILE      = 'tcp_listino.json';
-  var GIST_FILE_BASE  = 'tcp_listino_base.json';
-  var GIST_FILE_ADD   = 'tcp_addizionali.json';
+  var GIST_FILE    = 'tcp_listino.json';
+  var GIST_FILE_BASE = 'tcp_listino_base.json';
+  var GIST_FILE_ADD  = 'tcp_addizionali.json';
   var LS_LISTINO_BASE = 'tcp_listino_base';
   var LS_VETTORI      = 'tcp_vettori';
   var LS_ADDIZIONALI  = 'tcp_addizionali';
@@ -612,347 +612,312 @@
   }
 
 
-  // ═══════════════════════════════════════════════
-  //  TARIFFARIO C.R.T. — POPUP COMPLETO
-  // ═══════════════════════════════════════════════
-
   function apriTariffarioCRT() {
     panel.style.display = 'none';
+    var rows = [];
+    var raw = localStorage.getItem(LS_LISTINO_BASE);
+    try { if (raw) rows = JSON.parse(raw).rows || []; } catch(e) { localStorage.removeItem(LS_LISTINO_BASE); }
+    var rowsJson = JSON.stringify(rows);
 
-    var lsData = { rows: [] };
-    try { var rawCRT = localStorage.getItem(LS_LISTINO_BASE); if (rawCRT) lsData = JSON.parse(rawCRT); }
-    catch(e) { localStorage.removeItem(LS_LISTINO_BASE); }
-    var rows = lsData.rows || [];
-
-    var nLIV = rows.filter(function(r){ return r.porto === 'ITLIV'; }).length;
-    var nSPE = rows.filter(function(r){ return r.porto === 'ITSPE'; }).length;
-    var nGOA = rows.filter(function(r){ return r.porto === 'ITGOA'; }).length;
-
-    var cssG =
-      'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}' +
-      '#topbar{display:flex;align-items:center;justify-content:space-between;background:#8e44ad;color:white;padding:10px 18px;gap:10px;position:sticky;top:0;z-index:100}' +
-      '#topbar h2{margin:0;font-size:14px;white-space:nowrap}' +
-      '#topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}' +
-      '#tabs{display:flex;gap:6px;flex-shrink:0}' +
-      '.tab-btn{padding:5px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:rgba(255,255,255,.2);color:white}' +
-      '.tab-btn.active{background:white;color:#8e44ad}' +
-      '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:200px}' +
-      '.btn-top{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap}' +
-      '#btn-nuova{background:#27ae60;color:white}' +
-      '#btn-export{background:#16a085;color:white}' +
-      '#btn-carica-excel{background:#2980b9;color:white}' +
-      '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 62px);box-sizing:border-box}' +
-      'table{width:100%;border-collapse:collapse;font-size:11px}' +
-      'th{background:#8e44ad;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}' +
-      'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}' +
-      'tr:hover td{background:#f5eef8}' +
-      '.tc{color:#27ae60;font-weight:bold}.tna{color:#ddd}' +
-      '#nrows{font-size:11px;color:#888;margin-top:8px}' +
-      '#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}' +
-      '#overlay.show{display:flex}' +
-      '#modale{background:white;border-radius:10px;padding:24px;width:500px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.3)}' +
-      '#modale h3{margin:0 0 4px;color:#8e44ad;font-size:15px}' +
-      '.sep{height:1px;background:#eee;margin:10px 0}' +
-      '.fg{display:grid;grid-template-columns:1fr 1fr;gap:8px}' +
-      '.fg label{font-size:11px;color:#555;font-weight:bold;display:flex;flex-direction:column;gap:3px}' +
-      '.fg input,.fg select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box;width:100%}' +
-      '.full{grid-column:1/-1}' +
-      '.mbtns{margin-top:14px;display:flex;justify-content:flex-end;gap:8px}' +
-      '.mbtns button{padding:8px 18px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold}' +
-      '.btn-save{background:#27ae60;color:white}.btn-cancel{background:#bdc3c7;color:#333}' +
-      '.be{padding:3px 7px;border:none;background:#8e44ad;color:white;border-radius:3px;cursor:pointer;font-size:11px;margin-right:2px}' +
-      '.bd{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}';
+    var cssC =
+      'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}'+'#topbar{display:flex;align-items:center;justify-content:space-between;background:#1a5276;color:white;padding:10px 18px;gap:8px;position:sticky;top:0;z-index:100}'+'#topbar h2{margin:0;font-size:14px;white-space:nowrap}'+'#topbar-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+'#tabs{display:flex;gap:4px;margin-right:6px}'+'#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:180px}'+'#btn-sync-crt{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:#2980b9;color:white;white-space:nowrap}'+'#btn-nuova-crt{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:#27ae60;color:white;white-space:nowrap}'+'#btn-carica-excel-crt{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:#e67e22;color:white;white-space:nowrap}'+'#btn-export-crt{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:#16a085;color:white;white-space:nowrap}'+'#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 66px);box-sizing:border-box}'+'table{width:100%;border-collapse:collapse;font-size:11px}'+'th{background:#1a5276;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}'+'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}'+'tr:hover td{background:#f0f7ff}'+'#nrows{font-size:11px;color:#888;margin-top:8px}'+'#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}'+'#overlay.show{display:flex}'+'#modale{background:white;border-radius:10px;padding:24px;width:480px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.3)}'+'#modale h3{margin:0 0 12px;color:#1a5276;font-size:15px}'+'#modale .sep{height:1px;background:#eee;margin:10px 0}'+'#modale .fg{display:grid;grid-template-columns:1fr 1fr;gap:8px}'+'#modale .fg label{font-size:11px;color:#555;font-weight:bold;display:flex;flex-direction:column;gap:3px}'+'#modale .fg input,#modale .fg select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box;width:100%}'+'#modale .full{grid-column:1/-1}'+'#modale .mbtns{margin-top:14px;display:flex;justify-content:flex-end;gap:8px}'+'#modale .mbtns button{padding:8px 18px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold}'+'#modale .btn-save{background:#27ae60;color:white}'+'#modale .btn-cancel{background:#bdc3c7;color:#333}'+'#modale .fg input:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.15)}'+'#modale .fg select:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.15)}'+'#modale .fg input[type=number]{width:100%}'+'tc{color:#27ae60;font-weight:bold}.tna{color:#ddd}'+'#porto-livorno{background:#1a5276;color:white;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:bold}'+'#porto-spezia{background:#8e44ad;color:white;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:bold}'+'#porto-genova{background:#16a085;color:white;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:bold}'+'#porto-altro{background:#7f8c8d;color:white;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:bold}'+'span.porto-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:bold;color:white}'+'span.pb-ITLIV{background:#1a5276}'+'span.pb-ITSPE{background:#8e44ad}'+'span.pb-ITGOA{background:#16a085}'+'span.pb-other{background:#7f8c8d}'+'button.tab-btn{padding:5px 12px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:rgba(255,255,255,.2);color:white}'+'button.tab-btn.active{background:white;color:#1a5276}'+'button.be{padding:3px 7px;border:none;background:#8e44ad;color:white;border-radius:3px;cursor:pointer;font-size:11px;margin-right:2px}'+'button.bd{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}';
 
     var scriptData =
-      'var _rows=' + JSON.stringify(rows) + ';' +
-      'var _LS="tcp_listino_base";' +
-      'var _GIST_ID="93f3fe07c908d94f152c56ad805202f5";' +
-      'var _GIST_FILE="tcp_listino_base.json";' +
-      'var _editIdx=null;' +
-      'var _currentPorto="all";';
+      'var _rows='+rowsJson+';'+'var _editIdx=null;'+'var _fp="ITLIV";'+'var _LS="tcp_listino_base";'+'var _GID="93f3fe07c908d94f152c56ad805202f5";'+'var _GF="tcp_listino_base.json";';
 
     var scriptLogic =
-      'function pushGistCRT(rows){' +
-        'var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;' +
-        'fetch("https://api.github.com/gists/"+_GIST_ID,{' +
-          'method:"PATCH",' +
-          'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},' +
-          'body:JSON.stringify({files:{[_GIST_FILE]:{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})' +
-        '}).catch(function(){});' +
-      '}' +
-
-      'function renderTable(){' +
-        'var filter=(document.getElementById("search").value||"").toLowerCase();' +
-        'var html="";var count=0;' +
-        '_rows.forEach(function(r,i){' +
-          'if(_currentPorto!=="all"&&r.porto!==_currentPorto)return;' +
-          'var s=[r.porto||"",r.cap||"",r.prov||"",r.localita||"",r.note||""].join(" ").toLowerCase();' +
-          'if(filter&&!s.includes(filter))return;' +
-          'count++;' +
-          'function tc(f){return r[f]?"<td class=\'tc\'>"+r[f]+"</td>":"<td class=\'tna\'>-</td>";}' +
-          'html+="<tr>";' +
-          'html+="<td style=\'color:#aaa;font-size:10px\'>"+i+"</td>";' +
-          'html+="<td style=\'font-weight:bold;color:#8e44ad\'>"+(r.porto||"")+"</td>";' +
-          'html+="<td>"+(r.cap||"")+"</td>";' +
-          'html+="<td>"+(r.prov||"")+"</td>";' +
-          'html+="<td>"+(r.localita||"")+"</td>";' +
-          'html+="<td style=\'text-align:right;color:#555\'>"+(r.dist_km||"")+"</td>";' +
-          'html+=tc("costo_20");html+=tc("costo_40");' +
-          'html+="<td style=\'color:#888;font-size:10px\'>"+(r.note||"")+"</td>";' +
-          'html+="<td><button class=\'be\' data-i=\'"+i+"\'>&#x270F;</button><button class=\'bd\' data-i=\'"+i+"\'>&#x1F5D1;</button></td>";' +
-          'html+="</tr>";' +
-        '});' +
-        'document.getElementById("tbody").innerHTML=html;' +
-        'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+_rows.length+" tariffe";' +
-      '}' +
-
-      'function apriForm(idx){' +
-        '_editIdx=idx;' +
-        'var r=idx>=0?_rows[idx]:{};' +
-        'document.getElementById("m-titolo").textContent=idx>=0?"Modifica tariffa":"Nuova tariffa";' +
-        '["porto","cap","prov","localita","dist_km","costo_20","costo_40","note"].forEach(function(f){' +
-          'var el=document.getElementById("f-"+f.replace(/_/g,"-"));' +
-          'if(el)el.value=r[f]||"";' +
-        '});' +
-        'document.getElementById("overlay").classList.add("show");' +
-      '}' +
-
-      'function chiudiForm(){document.getElementById("overlay").classList.remove("show");_editIdx=null;}' +
-
-      'function salvaForm(){' +
-        'var r={};' +
-        '["porto","cap","prov","localita","dist_km","costo_20","costo_40","note"].forEach(function(f){' +
-          'var el=document.getElementById("f-"+f.replace(/_/g,"-"));' +
-          'r[f]=el?el.value.trim():"";' +
-        '});' +
-        'if(!r.porto){alert("Seleziona il porto.");return;}' +
-        'if(_editIdx>=0){_rows[_editIdx]=r;}else{_rows.push(r);}' +
-        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;d.loaded_at=new Date().toISOString();localStorage.setItem(_LS,JSON.stringify(d));}catch(e){}' +
-        'pushGistCRT(_rows);chiudiForm();renderTable();' +
-      '}' +
-
-      'function cancellaRiga(idx){' +
-        'if(!confirm("Cancellare questa tariffa?"))return;' +
-        '_rows.splice(idx,1);' +
-        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;localStorage.setItem(_LS,JSON.stringify(d));}catch(e){}' +
-        'pushGistCRT(_rows);renderTable();' +
-      '}' +
-
-      'function esportaExcel(){' +
-        'var hdr=[["porto","cap","prov","localita","dist_km","costo_20","costo_40","note"]];' +
-        '_rows.forEach(function(r){hdr.push([r.porto||"",r.cap||"",r.prov||"",r.localita||"",r.dist_km||"",r.costo_20||"",r.costo_40||"",r.note||""]);});' +
-        'var wb=XLSX.utils.book_new();' +
-        'XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hdr),"CRT");' +
-        'XLSX.writeFile(wb,"tariffario_crt_"+new Date().toISOString().slice(0,10)+".xlsx");' +
-      '}' +
-
-      'document.querySelectorAll(".tab-btn").forEach(function(b){' +
-        'b.addEventListener("click",function(){' +
-          'document.querySelectorAll(".tab-btn").forEach(function(x){x.classList.remove("active");});' +
-          'this.classList.add("active");' +
-          '_currentPorto=this.dataset.porto;' +
-          'renderTable();' +
-        '});' +
-      '});' +
-
-      'var _inputExcel=document.createElement("input");' +
-      '_inputExcel.type="file";_inputExcel.accept=".xlsx,.xls";_inputExcel.style.display="none";' +
-      'document.body.appendChild(_inputExcel);' +
-      'var _PORTO_MAP={"Livorno":"ITLIV","La Spezia":"ITSPE","Genova":"ITGOA"};' +
-
-      '_inputExcel.addEventListener("change",function(){' +
-        'var f=_inputExcel.files[0];if(!f)return;' +
-        'var reader=new FileReader();' +
-        'reader.onload=function(ev){' +
-          'try{' +
-            'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});' +
-            'var nuove=[];var portiImportati=[];' +
-            'wb.SheetNames.forEach(function(sn){' +
-              'var porto=_PORTO_MAP[sn];if(!porto)return;' +
-              'portiImportati.push(porto);' +
-              'var righe=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:""});' +
-              'righe.forEach(function(row){' +
-                'nuove.push({' +
-                  'porto:porto,' +
-                  'cap:(row["CAP"]||row["cap"]||"").toString().trim(),' +
-                  'prov:(row["Pro/Prov"]||row["prov"]||"").toString().trim(),' +
-                  'localita:(row["Localit\u00e0"]||row["Localita"]||row["localita"]||"").toString().trim(),' +
-                  'dist_km:(row["Dist KM A/R"]||row["dist_km"]||"").toString().trim(),' +
-                  'costo_20:(row["20\'"]||row["costo_20"]||"").toString().trim(),' +
-                  'costo_40:(row["40\'/20 HT"]||row["40\'"]||row["costo_40"]||"").toString().trim(),' +
-                  'note:""' +
-                '});' +
-              '});' +
-            '});' +
-            '_rows=_rows.filter(function(r){return portiImportati.indexOf(r.porto)===-1;}).concat(nuove);' +
-            'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;d.loaded_at=new Date().toISOString();localStorage.setItem(_LS,JSON.stringify(d));}catch(er){}' +
-            'pushGistCRT(_rows);renderTable();' +
-            'alert("Importate "+nuove.length+" tariffe da "+portiImportati.join(", ")+".");' +
-          '}catch(err){alert("Errore lettura: "+err.message);}' +
-        '};' +
-        'reader.readAsArrayBuffer(f);' +
-      '});' +
-
-      'document.addEventListener("click",function(e){' +
-        'if(e.target.id==="btn-nuova"){apriForm(-1);}' +
-        'if(e.target.id==="btn-export"){esportaExcel();}' +
-        'if(e.target.id==="btn-carica-excel"){_inputExcel.value="";_inputExcel.click();}' +
-        'if(e.target.classList.contains("be")){apriForm(parseInt(e.target.dataset.i));}' +
-        'if(e.target.classList.contains("bd")){cancellaRiga(parseInt(e.target.dataset.i));}' +
-        'if(e.target.id==="btn-annulla"||e.target.id==="overlay"){chiudiForm();}' +
-        'if(e.target.id==="btn-salva"){salvaForm();}' +
-      '});' +
-
-      'document.getElementById("search").addEventListener("input",renderTable);' +
-      'renderTable();';
+      'function saveLSCRT(rows){'
+      +'try{localStorage.setItem(_LS,JSON.stringify({rows:rows,loaded_at:new Date().toISOString()}));}catch(e){}'
+      +'var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;'
+      +'fetch("https://api.github.com/gists/"+_GID,{'
+      +'method:"PATCH",'
+      +'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},'
+      +'body:JSON.stringify({files:{[_GF]:{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})'
+      +'}).catch(function(){});'
+      +'}'
+      +'function portoClass(p){'
+      +'if(p==="ITLIV")return"ITLIV";'
+      +'if(p==="ITSPE")return"ITSPE";'
+      +'if(p==="ITGOA")return"ITGOA";'
+      +'return"other";'
+      +'}'
+      +'function tcell(val){'
+      +'return val?"<td style=\"color:#27ae60;font-weight:bold\">"+val+"</td>":"<td style=\"color:#ddd\">-</td>";'
+      +'}'
+      +'function renderTable(){'
+      +'var filter=(document.getElementById("search").value||"").toLowerCase();'
+      +'var html="";var count=0;'
+      +'_rows.forEach(function(r,i){'
+      +'if(_fp&&(r.porto||"")!==_fp)return;'
+      +'var s=[r.porto,r.cap,r.prov,r.localita,r.km,r.costo_20,r.costo_40].join(" ").toLowerCase();'
+      +'if(filter&&!s.includes(filter))return;'
+      +'count++;'
+      +'var pc=portoClass(r.porto||"");'
+      +'html+="<tr>";'
+      +'html+="<td style=\"color:#aaa;font-size:10px\">"+i+"</td>";'
+      +'html+="<td><span class=\"porto-badge pb-"+pc+"\">"+( r.porto||"")+ "</span></td>";'
+      +'html+="<td>"+(r.cap||"")+"</td>";'
+      +'html+="<td>"+(r.prov||"")+"</td>";'
+      +'html+="<td style=\"font-weight:bold\">"+(r.localita||"")+"</td>";'
+      +'html+=tcell(r.km);html+=tcell(r.costo_20);html+=tcell(r.costo_40);'
+      +'html+="<td><button class=\"be\" data-i=\""+i+"\">&#x270F;</button><button class=\"bd\" data-i=\""+i+"\">&#x1F5D1;</button></td>";'
+      +'html+="</tr>";'
+      +'});'
+      +'document.getElementById("tbody").innerHTML=html;'
+      +'var tot=_fp?_rows.filter(function(r){return(r.porto||"")===_fp;}).length:_rows.length;'
+      +'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+tot+" tariffe \u2014 Archivio totale: "+_rows.length;'
+      +'}'
+      +'function apriFormCRT(idx){'
+      +'_editIdx=idx;'
+      +'var r=idx>=0?_rows[idx]:{};'
+      +'document.getElementById("m-titolo").textContent=idx>=0?"Modifica tariffa":"Nuova tariffa";'
+      +'["porto","cap","prov","localita","km","costo_20","costo_40"].forEach(function(f){'
+      +'var el=document.getElementById("cf-"+f);if(el)el.value=r[f]||"";'
+      +'});'
+      +'if(idx<0){var elp=document.getElementById("cf-porto");if(elp&&_fp)elp.value=_fp;}'
+      +'document.getElementById("overlay").classList.add("show");'
+      +'}'
+      +'function chiudiFormCRT(){'
+      +'document.getElementById("overlay").classList.remove("show");_editIdx=null;'
+      +'}'
+      +'function salvaFormCRT(){'
+      +'var r={};'
+      +'["porto","cap","prov","localita","km","costo_20","costo_40"].forEach(function(f){'
+      +'var el=document.getElementById("cf-"+f);r[f]=el?el.value.trim():"";'
+      +'});'
+      +'if(!r.porto||!r.localita){alert("Porto e Localit\u00e0 sono obbligatori.");return;}'
+      +'if(_editIdx>=0){_rows[_editIdx]=r;}else{_rows.push(r);}'
+      +'saveLSCRT(_rows);chiudiFormCRT();renderTable();'
+      +'}'
+      +'function cancellaCRT(idx){'
+      +'if(!confirm("Cancellare questa tariffa?"))return;'
+      +'_rows.splice(idx,1);saveLSCRT(_rows);renderTable();'
+      +'}'
+      +'var _k20="20\u0027";var _k40a="40\u0027/20 HT";var _k40b="40\u0027";var _kloc="Localit\u00e0";'
+      +'var _inputXls=document.createElement("input");'
+      +'_inputXls.type="file";_inputXls.accept=".xlsx,.xls";_inputXls.style.display="none";'
+      +'document.body.appendChild(_inputXls);'
+      +'_inputXls.addEventListener("change",function(){'
+      +'var f=_inputXls.files[0];if(!f)return;'
+      +'var reader=new FileReader();'
+      +'reader.onload=function(ev){'
+      +'try{'
+      +'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});'
+      +'var nuove=[];'
+      +'wb.SheetNames.forEach(function(sn){'
+      +'var pc=null;var snl=sn.toLowerCase();'
+      +'if(snl.indexOf("livorno")>=0)pc="ITLIV";'
+      +'else if(snl.indexOf("spezia")>=0)pc="ITSPE";'
+      +'else if(snl.indexOf("genova")>=0)pc="ITGOA";'
+      +'if(!pc)return;'
+      +'var rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:""});'
+      +'rr.forEach(function(row){'
+      +'var cap=String(row["CAP"]||row["cap"]||"").trim();'
+      +'var prov=String(row["Pro/Prov"]||row["Prov"]||row["prov"]||"").trim();'
+      +'var loc=String(row[_kloc]||row["Localita"]||row["localita"]||"").trim();'
+      +'var km=String(row["Dist KM A/R"]||row["KM"]||row["km"]||"").trim();'
+      +'var c20=String(row[_k20]||row["20"]||row["costo_20"]||"").trim();'
+      +'var c40=String(row[_k40a]||row[_k40b]||row["40"]||row["costo_40"]||"").trim();'
+      +'if(loc)nuove.push({porto:pc,cap:cap,prov:prov,localita:loc,km:km,costo_20:c20,costo_40:c40});'
+      +'});'
+      +'});'
+      +'if(!nuove.length){alert("Nessuna tariffa trovata.\nVerifica che i fogli si chiamino Livorno, La Spezia o Genova.");return;}'
+      +'if(confirm("Trovate "+nuove.length+" tariffe.\nOK = Sostituisci il tariffario attuale\nAnnulla = Aggiungi alle esistenti")){'
+      +'_rows=nuove;'
+      +'} else {'
+      +'_rows=_rows.concat(nuove);'
+      +'}'
+      +'saveLSCRT(_rows);renderTable();alert("Importate "+nuove.length+" tariffe.");'
+      +'} catch(e){alert("Errore lettura file: "+e.message);}'
+      +'};'
+      +'reader.readAsArrayBuffer(f);'
+      +'});'
+      +'function syncDaGistCRT(){'
+      +'var tok=localStorage.getItem("tcp_gcc_token");'
+      +'if(!tok){alert("Token non configurato.");return;}'
+      +'fetch("https://api.github.com/gists/"+_GID,{'
+      +'headers:{"Authorization":"token "+tok,"Accept":"application/vnd.github.v3+json"}'
+      +'}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})'
+      +'.then(function(gd){'
+      +'var raw=(gd.files[_GF]&&gd.files[_GF].content)||null;'
+      +'if(!raw){alert("File non trovato sul Gist.");return;}'
+      +'var data;try{data=JSON.parse(raw);}catch(e){alert("Errore parsing Gist.");return;}'
+      +'_rows=(data.rows||[]);'
+      +'try{localStorage.setItem(_LS,JSON.stringify({rows:_rows,loaded_at:new Date().toISOString()}));}catch(e){}'
+      +'renderTable();alert("Sync OK: "+_rows.length+" tariffe caricate.");'
+      +'}).catch(function(e){alert("Errore sync: "+e.message);});'
+      +'}'
+      +'function esportaExcelCRT(){'
+      +'var wb=XLSX.utils.book_new();'
+      +'var pm={"ITLIV":"Livorno","ITSPE":"La Spezia","ITGOA":"Genova"};'
+      +'Object.keys(pm).forEach(function(pc){'
+      +'var rr=_rows.filter(function(r){return(r.porto||"")===pc;});'
+      +'if(!rr.length)return;'
+      +'var data=[["CAP","Pro/Prov","Localit\u00e0","Dist KM A/R","20\u0027","40\u0027/20 HT"]];'
+      +'rr.forEach(function(r){'
+      +'data.push([r.cap||"",r.prov||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||""]);'
+      +'});'
+      +'XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),pm[pc]);'
+      +'});'
+      +'XLSX.writeFile(wb,"tariffario_crt_"+new Date().toISOString().slice(0,10)+".xlsx");'
+      +'}'
+      +'document.addEventListener("click",function(e){'
+      +'if(e.target.id==="btn-nuova-crt"){apriFormCRT(-1);}'
+      +'if(e.target.id==="btn-carica-excel-crt"){_inputXls.value="";_inputXls.click();}'
+      +'if(e.target.id==="btn-export-crt"){esportaExcelCRT();}'
+      +'if(e.target.id==="btn-sync-crt"){syncDaGistCRT();}'
+      +'if(e.target.classList.contains("be")){apriFormCRT(parseInt(e.target.dataset.i));}'
+      +'if(e.target.classList.contains("bd")){cancellaCRT(parseInt(e.target.dataset.i));}'
+      +'if(e.target.id==="btn-annulla-crt"||e.target.id==="overlay"){chiudiFormCRT();}'
+      +'if(e.target.id==="btn-salva-crt"){salvaFormCRT();}'
+      +'if(e.target.classList.contains("tab-btn")){'
+      +'document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("active");});'
+      +'e.target.classList.add("active");'
+      +'_fp=e.target.dataset.porto;'
+      +'renderTable();'
+      +'}'
+      +'});'
+      +'document.getElementById("search").addEventListener("input",renderTable);'
+      +'renderTable();';
 
     var thH =
-      '<th>#</th><th>Porto</th><th>CAP</th><th>Pro/Prov</th>' +
-      '<th>Localit\u00e0</th><th>KM A/R</th>' +
-      '<th>20\'</th><th>40\'/HT</th><th>Note</th><th>Azioni</th>';
+      '<th>#</th><th>Porto</th><th>CAP</th><th>Prov</th><th>Localit\u00e0</th>'+'<th>KM A/R</th><th>Costo 20\u0027</th><th>Costo 40\u0027</th><th>Azioni</th>';
 
-    var popup = window.open('', 'tcp_tariffario_crt', 'width=1100,height=700,scrollbars=yes,resizable=yes');
+    var popup = window.open('', 'tcp_crt', 'width=1150,height=720,scrollbars=yes,resizable=yes');
     popup.document.write(
-      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tariffario C.R.T.<\/title>' +
-      '<style>' + cssG + '<\/style><\/head><body>' +
-      '<div id="topbar">' +
-        '<h2>&#x1F4CA; Tariffario C.R.T.<\/h2>' +
-        '<div id="tabs">' +
-          '<button class="tab-btn active" data-porto="all">Tutti (' + rows.length + ')<\/button>' +
-          '<button class="tab-btn" data-porto="ITLIV">Livorno (' + nLIV + ')<\/button>' +
-          '<button class="tab-btn" data-porto="ITSPE">La Spezia (' + nSPE + ')<\/button>' +
-          '<button class="tab-btn" data-porto="ITGOA">Genova (' + nGOA + ')<\/button>' +
-        '<\/div>' +
-        '<div id="topbar-right">' +
-          '<input id="search" placeholder="\uD83D\uDD0D Filtra per localit\u00e0, CAP, prov...">' +
-          '<button class="btn-top" id="btn-carica-excel">&#x1F4C2; Carica Excel<\/button>' +
-          '<button class="btn-top" id="btn-nuova">&#x2795; Nuova tariffa<\/button>' +
-          '<button class="btn-top" id="btn-export">&#x1F4BE; Esporta Excel<\/button>' +
-        '<\/div>' +
-      '<\/div>' +
-      '<div id="table-wrap">' +
-        '<table><thead><tr>' + thH + '<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table>' +
-        '<div id="nrows"><\/div>' +
-      '<\/div>' +
-      '<div id="overlay">' +
-        '<div id="modale">' +
-          '<h3 id="m-titolo">Nuova tariffa<\/h3>' +
-          '<div class="sep"><\/div>' +
-          '<div class="fg">' +
-            '<label>Porto' +
-              '<select id="f-porto">' +
-                '<option value="">-- seleziona --<\/option>' +
-                '<option value="ITLIV">Livorno (ITLIV)<\/option>' +
-                '<option value="ITSPE">La Spezia (ITSPE)<\/option>' +
-                '<option value="ITGOA">Genova (ITGOA)<\/option>' +
-              '<\/select>' +
-            '<\/label>' +
-            '<label>Dist KM A/R<input type="number" id="f-dist-km" placeholder="es. 240"><\/label>' +
-            '<label>CAP<input type="text" id="f-cap" placeholder="es. 57100" maxlength="5"><\/label>' +
-            '<label>Pro/Prov<input type="text" id="f-prov" placeholder="es. LI" maxlength="4"><\/label>' +
-            '<label class="full">Localit\u00e0<input type="text" id="f-localita" placeholder="es. Livorno"><\/label>' +
-            '<label>Costo 20\' (&euro;)<input type="number" id="f-costo-20" placeholder="es. 100"><\/label>' +
-            '<label>Costo 40\'/HT (&euro;)<input type="number" id="f-costo-40" placeholder="es. 150"><\/label>' +
-            '<label class="full">Note<input type="text" id="f-note" placeholder="annotazioni libere"><\/label>' +
-          '<\/div>' +
-          '<div class="mbtns">' +
-            '<button class="btn-cancel" id="btn-annulla">Annulla<\/button>' +
-            '<button class="btn-save" id="btn-salva">&#x1F4BE; Salva<\/button>' +
-          '<\/div>' +
-        '<\/div>' +
-      '<\/div>' +
-      '<scr' + 'ipt>' + scriptData + '<\/scr' + 'ipt>' +
-      '<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr' + 'ipt>' +
-      '<scr' + 'ipt>' + scriptLogic + '<\/scr' + 'ipt>' +
-      '<\/body><\/html>'
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tariffario C.R.T.<\/title>'
+      +'<style>'+cssC+'<\/style><\/head><body>'
+      +'<div id="topbar">'
+      +'<h2>&#x1F4CA; Tariffario C.R.T.<\/h2>'
+      +'<div id="topbar-right">'
+      +'<div id="tabs">'
+      +'<button class="tab-btn active" data-porto="ITLIV">Livorno<\/button>'
+      +'<button class="tab-btn" data-porto="ITSPE">La Spezia<\/button>'
+      +'<button class="tab-btn" data-porto="ITGOA">Genova<\/button>'
+      +'<button class="tab-btn" data-porto="">Tutti<\/button>'
+      +'<\/div>'
+      +'<input id="search" placeholder="\uD83D\uDD0D Filtra..."/>'
+      +'<button id="btn-sync-crt">&#x2601; Sync<\/button>'
+      +'<button id="btn-nuova-crt">&#x2795; Nuova tariffa<\/button>'
+      +'<button id="btn-carica-excel-crt">&#x1F4C2; Carica Excel<\/button>'
+      +'<button id="btn-export-crt">&#x1F4BE; Esporta Excel<\/button>'
+      +'<\/div><\/div>'
+      +'<div id="table-wrap">'
+      +'<table><thead><tr>'+thH+'<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table>'
+      +'<div id="nrows"><\/div>'
+      +'<\/div>'
+      +'<div id="overlay">'
+      +'<div id="modale">'
+      +'<h3 id="m-titolo">Nuova tariffa<\/h3>'
+      +'<div class="sep"><\/div>'
+      +'<div class="fg">'
+      +'<label>Porto<select id="cf-porto">'
+      +'<option value="ITLIV">Livorno (ITLIV)<\/option>'
+      +'<option value="ITSPE">La Spezia (ITSPE)<\/option>'
+      +'<option value="ITGOA">Genova (ITGOA)<\/option>'
+      +'<\/select><\/label>'
+      +'<label>CAP<input type="text" id="cf-cap" maxlength="10" placeholder="es. 50100"><\/label>'
+      +'<label>Prov<input type="text" id="cf-prov" maxlength="5" placeholder="es. FI"><\/label>'
+      +'<label class="full">Localit\u00e0<input type="text" id="cf-localita" placeholder="es. Firenze"><\/label>'
+      +'<label>KM A/R<input type="number" id="cf-km" min="0" placeholder="es. 200"><\/label>'
+      +'<label class="full" style="border-top:2px solid #ebf5fb;padding-top:8px;margin-top:4px;font-size:11px;color:#1a5276;text-transform:uppercase;letter-spacing:.5px">Tariffe<\/label>'
+      +'<label>Costo 20\u0027 (&#x20ac;)<input type="number" id="cf-costo_20" min="0" step="0.01" placeholder="es. 280"><\/label>'
+      +'<label>Costo 40\u0027\/HT (&#x20ac;)<input type="number" id="cf-costo_40" min="0" step="0.01" placeholder="es. 380"><\/label>'
+      +'<\/div>'
+      +'<div class="mbtns">'
+      +'<button class="btn-cancel" id="btn-annulla-crt">Annulla<\/button>'
+      +'<button class="btn-save" id="btn-salva-crt">&#x1F4BE; Salva<\/button>'
+      +'<\/div>'
+      +'<\/div><\/div>'
+      +'<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'
+      +'<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'
+      +'<scr'+'ipt>'+scriptLogic+'<\/scr'+'ipt>'
+      +'<\/body><\/html>'
     );
     popup.document.close();
   }
-
-  // ═══════════════════════════════════════════════
-  //  GESTIONE VETTORI — stub
-  // ═══════════════════════════════════════════════
 
   function apriGestioneVettori() {
     panel.style.display = 'none';
     alert('Gestione Vettori in arrivo.');
   }
 
-  // ═══════════════════════════════════════════════
-  //  ADDIZIONALI — OVERLAY IN-PAGE
-  // ═══════════════════════════════════════════════
-
   function apriAddizionali() {
     panel.style.display = 'none';
-
-    var savedAdd = {};
+    var raw = localStorage.getItem(LS_ADDIZIONALI);
+    var add = {hc:'',reefer_perc:'',reefer_min:'',adr:'',seconda_presa:'',notte:'',vgm:'',fuel_perc:''};
     try {
-      var rawAdd = localStorage.getItem(LS_ADDIZIONALI);
-      if (rawAdd) savedAdd = JSON.parse(rawAdd);
+      if (raw) {
+        var p = JSON.parse(raw);
+        Object.keys(add).forEach(function(k){ if (p[k] !== undefined) add[k] = p[k]; });
+      }
     } catch(e) { localStorage.removeItem(LS_ADDIZIONALI); }
 
-    var overlayAdd = document.createElement('div');
-    overlayAdd.style.cssText = [
-      'position:fixed','inset:0','background:rgba(0,0,0,.5)',
-      'z-index:2147483647','display:flex','align-items:center',
-      'justify-content:center','font-family:Arial,sans-serif'
-    ].join(';');
+    var overlay = document.createElement('div');
+    overlay.id = 'gcc-add-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;';
 
-    var modalAdd = document.createElement('div');
-    modalAdd.style.cssText = [
-      'background:white','border-radius:10px','padding:24px',
-      'width:480px','max-width:95vw','max-height:90vh','overflow-y:auto',
-      'box-shadow:0 8px 32px rgba(0,0,0,.3)'
-    ].join(';');
-
-    var ADD_FIELDS = [
-      { key:'hc',           label:'&#x2744; HC Supplemento (\u20ac)',  placeholder:'es. 30' },
-      { key:'reefer_perc',  label:'&#x2744; Reefer % sul base',        placeholder:'es. 20' },
-      { key:'reefer_min',   label:'&#x2744; Reefer minimo (\u20ac)',    placeholder:'es. 80' },
-      { key:'adr',          label:'&#x26A0; ADR (\u20ac)',              placeholder:'es. 50' },
-      { key:'seconda_presa',label:'&#x1F4CD; 2\u00aa Presa (\u20ac)',   placeholder:'es. 60' },
-      { key:'notte',        label:'&#x1F319; Notte (\u20ac)',           placeholder:'es. 65' },
-      { key:'vgm',          label:'&#x2696; VGM (\u20ac)',              placeholder:'es. 0'  },
-      { key:'fuel_perc',    label:'&#x26FD; Fuel Surcharge %',          placeholder:'es. 15' }
+    var fields = [
+      {key:'hc',           label:'Supplemento HC',     unit:'€', hint:'fisso per unità'},
+      {key:'adr',           label:'ADR',                unit:'€', hint:'merci pericolose'},
+      {key:'seconda_presa',  label:'2ª Presa',       unit:'€', hint:'ritiro aggiuntivo'},
+      {key:'notte',          label:'Sosta Notte',        unit:'€', hint:'per notte'},
+      {key:'vgm',            label:'VGM',               unit:'€', hint:'pesata container'},
+      {key:'fuel_perc',      label:'Fuel Surcharge',     unit:'%',  hint:'% sul costo base'},
+      {key:'reefer_perc',    label:'Reefer %',          unit:'%',  hint:'% sul prezzo base'},
+      {key:'reefer_min',     label:'Reefer minimo',     unit:'€', hint:'importo minimo garantito'}
     ];
 
     var fieldsHtml = '';
-    ADD_FIELDS.forEach(function(f){
+    fields.forEach(function(f) {
       fieldsHtml +=
-        '<label style="font-size:11px;font-weight:bold;color:#555;display:flex;flex-direction:column;gap:3px;">' +
-        f.label +
-        '<input type="number" data-key="' + f.key + '" value="' + (savedAdd[f.key]||'') + '" placeholder="' + f.placeholder + '" ' +
-        'style="padding:7px 9px;border:1px solid #ccc;border-radius:4px;font-size:13px;">' +
-        '</label>';
+        '<label style="font-size:11px;font-weight:bold;color:#555;display:flex;flex-direction:column;gap:3px">'
+        + f.label
+        + '<span style="font-size:10px;color:#999;font-weight:normal"> — ' + f.hint + '</span>'
+        + '<div style="display:flex;align-items:center;gap:6px">'
+        + '<input type="number" id="gcc-add-' + f.key + '" value="" min="0" step="0.01"'
+        + ' style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;width:90px;box-sizing:border-box">'
+        + '<span style="font-size:12px;color:#888">' + f.unit + '</span>'
+        + '</div></label>';
     });
 
-    modalAdd.innerHTML =
-      '<div style="font-weight:bold;color:#c0392b;font-size:15px;margin-bottom:4px">&#x2695; Addizionali Listino Base</div>' +
-      '<div style="font-size:11px;color:#888;margin-bottom:14px">Valori applicati al tariffario C.R.T. per il calcolo del costo totale</div>' +
-      '<div style="height:1px;background:#eee;margin-bottom:14px"></div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">' + fieldsHtml + '</div>' +
-      '<div style="display:flex;justify-content:flex-end;gap:8px">' +
-        '<button id="gcc-add-cancel" style="padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#bdc3c7;font-size:13px;font-weight:bold;">Annulla</button>' +
-        '<button id="gcc-add-save" style="padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#c0392b;color:white;font-size:13px;font-weight:bold;">&#x1F4BE; Salva</button>' +
-      '</div>';
+    var modal = document.createElement('div');
+    modal.style.cssText = 'background:white;border-radius:10px;padding:28px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.3);';
+    modal.innerHTML =
+      '<div style="font-weight:bold;color:#1a5276;font-size:15px;margin-bottom:4px">&#x2695; Addizionali Tariffario Base</div>'
+      +'<div style="font-size:11px;color:#888;margin-bottom:14px">Supplementi applicati sopra al prezzo base C.R.T. — sincronizzati su Gist</div>'
+      +'<div style="height:1px;background:#eee;margin-bottom:16px"></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">'
+      +fieldsHtml
+      +'</div>'
+      +'<div style="display:flex;justify-content:flex-end;gap:8px">'
+      +'<button id="gcc-add-cancel" style="padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#bdc3c7;font-size:13px;font-weight:bold">Annulla</button>'
+      +'<button id="gcc-add-save" style="padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#27ae60;color:white;font-size:13px;font-weight:bold">&#x1F4BE; Salva</button>'
+      +'</div>';
 
-    overlayAdd.appendChild(modalAdd);
-    document.body.appendChild(overlayAdd);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
 
-    function chiudiAdd() { document.body.removeChild(overlayAdd); }
+    fields.forEach(function(f) {
+      var el = document.getElementById('gcc-add-' + f.key);
+      if (el) el.value = add[f.key] || '';
+    });
 
-    document.getElementById('gcc-add-save').addEventListener('click', function(){
-      var data = {};
-      modalAdd.querySelectorAll('input[data-key]').forEach(function(el){
-        data[el.dataset.key] = el.value.trim();
+    function chiudiAdd() { if (overlay.parentNode) document.body.removeChild(overlay); }
+
+    document.getElementById('gcc-add-save').addEventListener('click', function() {
+      var nuovi = {};
+      fields.forEach(function(f) {
+        var el = document.getElementById('gcc-add-' + f.key);
+        nuovi[f.key] = el ? el.value.trim() : '';
       });
-      localStorage.setItem(LS_ADDIZIONALI, JSON.stringify(data));
-      var tokenAdd = localStorage.getItem(LS_TOKEN);
-      if (tokenAdd) {
+      try { localStorage.setItem(LS_ADDIZIONALI, JSON.stringify(nuovi)); } catch(e) {}
+      var tok = localStorage.getItem(LS_TOKEN);
+      if (tok) {
         fetch('https://api.github.com/gists/' + GIST_ID, {
           method: 'PATCH',
-          headers: { 'Authorization': 'token ' + tokenAdd, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ files: { 'tcp_addizionali.json': { content: JSON.stringify(data, null, 2) } } })
+          headers: {'Authorization': 'token ' + tok, 'Content-Type': 'application/json'},
+          body: JSON.stringify({files: {[GIST_FILE_ADD]: {content: JSON.stringify(nuovi, null, 2)}}})
         }).catch(function(){});
       }
       chiudiAdd();
@@ -960,7 +925,7 @@
     });
 
     document.getElementById('gcc-add-cancel').addEventListener('click', chiudiAdd);
-    overlayAdd.addEventListener('click', function(e){ if (e.target === overlayAdd) chiudiAdd(); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) chiudiAdd(); });
   }
 
   // ═══════════════════════════════════════════════
@@ -1245,6 +1210,103 @@
     popup.document.close();
   }
 
+
+  // ═══════════════════════════════════════════════
+  //  MATCH CRT — calcola costo da tariffario base
+  // ═══════════════════════════════════════════════
+
+  // Estrae CAP, Provincia e Località da una stringa indirizzo
+  function parseIndirizzoDettaglio(addr) {
+    var cap   = '';
+    var prov  = '';
+    var loc   = '';
+    var mCap  = addr.match(/\b(\d{5})\b/);
+    if (mCap) cap = mCap[1];
+    var mProv = addr.match(/\(([A-Za-z]{2})\)/);
+    if (mProv) prov = mProv[1].toUpperCase();
+    // Località: ultima parola significativa prima del CAP o della prov
+    var pulito = addr
+      .replace(/\b\d{5}\b/, '')
+      .replace(/\([A-Za-z]{2}\)/, '')
+      .replace(/Via |Viale |Corso |Piazza |Largo |Str\. |Strada |Loc\. |Localit. /gi, '')
+      .replace(/,/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    // Prendi la parte dopo eventuale numero civico (es. "Via Roma 12 Firenze" → "Firenze")
+    var parti = pulito.split(' ').filter(function(p) { return p.length > 2 && isNaN(p); });
+    if (parti.length > 0) loc = parti[parti.length - 1];
+    return { cap: cap, prov: prov, loc: loc.toLowerCase() };
+  }
+
+  // Cerca nel tariffario CRT la riga che corrisponde all'indirizzo
+  // Strategia: 1) Località (+ conferma Prov se disponibile), 2) CAP esatto
+  // Restituisce { riga, metodo } o null
+  function cercaCRT(indirizzo, porto, crtRows) {
+    if (!crtRows || crtRows.length === 0) return null;
+    var det = parseIndirizzoDettaglio(indirizzo || '');
+    var righePorto = crtRows.filter(function(r) { return (r.porto || '') === porto; });
+    if (righePorto.length === 0) righePorto = crtRows; // fallback: tutti i porti
+
+    // 1) Cerca per Località (+ conferma Prov)
+    if (det.loc && det.loc.length > 2) {
+      var byLoc = righePorto.filter(function(r) {
+        return (r.localita || '').toLowerCase().indexOf(det.loc) !== -1 ||
+               det.loc.indexOf((r.localita || '').toLowerCase()) !== -1;
+      });
+      if (byLoc.length === 1) return { riga: byLoc[0], metodo: 'loc', label: byLoc[0].localita + (byLoc[0].prov ? ' (' + byLoc[0].prov + ')' : '') };
+      if (byLoc.length > 1 && det.prov) {
+        // Disambigua con provincia
+        var byLocProv = byLoc.filter(function(r) { return (r.prov || '').toUpperCase() === det.prov; });
+        if (byLocProv.length > 0) return { riga: byLocProv[0], metodo: 'loc', label: byLocProv[0].localita + ' (' + byLocProv[0].prov + ')' };
+      }
+      if (byLoc.length > 0) return { riga: byLoc[0], metodo: 'loc', label: byLoc[0].localita + (byLoc[0].prov ? ' (' + byLoc[0].prov + ')' : '') };
+    }
+
+    // 2) Fallback: CAP esatto
+    if (det.cap) {
+      var byCap = righePorto.filter(function(r) { return (r.cap || '').replace(/\s/g,'') === det.cap; });
+      if (byCap.length > 0) return { riga: byCap[0], metodo: 'cap', label: 'CAP ' + det.cap + ' \u2192 ' + byCap[0].localita };
+    }
+
+    return null;
+  }
+
+  // Calcola il costo CRT
+  // Struttura output:
+  //   subtotale = costoBase + fuelAmt  (€280 + €42 fuel 15% = €322)
+  //   addExtra  = addizionali separati (+ €30 HC + €50 ADR ...)
+  function calcolaCRT(rigaCRT, containerType, addizionali) {
+    var ct = containerType;
+    var costoBase = parseFloat(ct.isHC ? (rigaCRT.costo_40 || 0) : (ct.size === '20' ? (rigaCRT.costo_20 || 0) : (rigaCRT.costo_40 || 0)));
+    if (isNaN(costoBase) || costoBase === 0) return null;
+
+    var add      = addizionali || {};
+    var fuelPerc = parseFloat(add.fuel_perc || 0);
+    var fuelAmt  = fuelPerc > 0 ? parseFloat((costoBase * fuelPerc / 100).toFixed(2)) : 0;
+    var subtotale = parseFloat((costoBase + fuelAmt).toFixed(2));
+
+    // Addizionali scorporati dal subtotale
+    var addExtra = [];
+    if (ct.isHC && parseFloat(add.hc || 0) > 0)
+      addExtra.push({ label: 'HC', amt: parseFloat(add.hc) });
+    if (parseFloat(add.adr || 0) > 0)
+      addExtra.push({ label: 'ADR', amt: parseFloat(add.adr) });
+    if (parseFloat(add.seconda_presa || 0) > 0)
+      addExtra.push({ label: '2\u00aa presa', amt: parseFloat(add.seconda_presa) });
+    if (parseFloat(add.notte || 0) > 0)
+      addExtra.push({ label: 'sosta notte', amt: parseFloat(add.notte) });
+    if (parseFloat(add.vgm || 0) > 0)
+      addExtra.push({ label: 'VGM', amt: parseFloat(add.vgm) });
+
+    return {
+      costoBase: costoBase,
+      fuelAmt:   fuelAmt,
+      fuelPerc:  fuelPerc,
+      subtotale: subtotale,
+      addExtra:  addExtra
+    };
+  }
+
   // ═══════════════════════════════════════════════
   //  POPUP RISULTATI
   // ═══════════════════════════════════════════════
@@ -1334,10 +1396,80 @@
       });
     })();
 
+    // ── Leggi CRT e addizionali, calcola match per ogni gruppo mancante ──
+    var _crtRows = [];
+    var _addCRT  = {};
+    try {
+      var _rawCRT = localStorage.getItem(LS_LISTINO_BASE);
+      if (_rawCRT) _crtRows = JSON.parse(_rawCRT).rows || [];
+    } catch(e) {}
+    try {
+      var _rawAdd = localStorage.getItem(LS_ADDIZIONALI);
+      if (_rawAdd) _addCRT = JSON.parse(_rawAdd);
+    } catch(e) {}
+    // Leggi KM salvati manualmente (localStorage: tcp_km_tratte)
+    var _kmTratte = {};
+    try {
+      var _rawKm = localStorage.getItem('tcp_km_tratte');
+      if (_rawKm) _kmTratte = JSON.parse(_rawKm);
+    } catch(e) {}
+
+    // Calcola match CRT per ogni gruppo mancante
+    mGruppiM.forEach(function(g) {
+      var indirizzi = g.indirizzi || [];
+      var isDoppia  = indirizzi.length > 1 && (indirizzi[1] || '').trim() !== '';
+      var porto     = g.porto || '';
+
+      // Chiave KM per questa coppia di indirizzi
+      var kmKey = [norm(indirizzi[0]||''), norm(indirizzi[1]||''), norm(porto)].join('|||');
+
+      if (isDoppia) {
+        // Doppia località: cerca prima KM salvati manualmente
+        if (_kmTratte[kmKey]) {
+          var kmSalvati = parseFloat(_kmTratte[kmKey]);
+          // Cerca nel CRT la riga con KM più vicini
+          var rigaKm = null;
+          var diffMin = Infinity;
+          _crtRows.filter(function(r){ return (r.porto||'')=== porto || porto===''; }).forEach(function(r) {
+            var km = parseFloat(r.km || 0);
+            if (km > 0) {
+              var diff = Math.abs(km - kmSalvati);
+              if (diff < diffMin) { diffMin = diff; rigaKm = r; }
+            }
+          });
+          if (rigaKm) {
+            var calc = calcolaCRT(rigaKm, g.containerType, _addCRT);
+            if (calc) {
+              g.crtMatch = { riga: rigaKm, metodo: 'km', label: kmSalvati + ' km A/R → ' + rigaKm.localita };
+              g.crtCalc  = calc;
+            }
+          }
+        }
+        // Se non ci sono KM salvati, segnala che servono KM manuali
+        if (!g.crtMatch) {
+          g.crtNeedKm = true;
+          g.crtKmKey  = kmKey;
+        }
+      } else {
+        // Singola località: cerca nel CRT
+        var addr = indirizzi[0] || '';
+        var match = cercaCRT(addr, porto, _crtRows);
+        if (match) {
+          var calc = calcolaCRT(match.riga, g.containerType, _addCRT);
+          if (calc) {
+            g.crtMatch = match;
+            g.crtCalc  = calc;
+          }
+        }
+      }
+      g.isDoppia = isDoppia;
+      g.kmKey    = kmKey;
+    });
+
     var thCols =
       '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
       '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
-      '<th>Costo</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
+      '<th>Costo CRT</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
 
     // Genera HTML trovati raggruppati
     var htmlTrovati='';
@@ -1382,6 +1514,34 @@
     var htmlMancanti='';
     mGruppiM.forEach(function(g,mgi){
       var n=g.containers.length;
+
+      // Costruisci cella costo CRT
+      var costoCrtHtml = '';
+      if (g.crtCalc) {
+        var c = g.crtCalc;
+        var metodo = g.crtMatch ? g.crtMatch.label : '';
+        // €280 + €42 fuel (15%) = €322
+        var riga1 = '€' + c.costoBase;
+        if (c.fuelAmt > 0) riga1 += ' + €' + c.fuelAmt + ' fuel (' + c.fuelPerc + '%) = €' + c.subtotale;
+        // + €30 HC + €50 ADR ...
+        var riga2 = c.addExtra.map(function(x){ return '+ €' + x.amt + ' ' + x.label; }).join(' ');
+        costoCrtHtml =
+          '<span style="font-weight:bold;color:#8e44ad;font-size:12px">' + riga1 + '</span>' +
+          (riga2 ? '<span style="color:#7f8c8d;font-size:11px"> &nbsp;' + riga2 + '</span>' : '') +
+          '<br><span style="font-size:10px;color:#2980b9;font-style:italic">&#x1F4CC; ' + metodo + '</span>';
+      } else if (g.crtNeedKm) {
+        costoCrtHtml =
+          '<span style="color:#e67e22;font-size:11px">&#x1F69A; Doppia loc. &mdash; </span>' +
+          '<button class="btn-km" data-mgi="' + mgi + '" ' +
+            'style="padding:2px 8px;border:none;background:#e67e22;color:white;border-radius:3px;cursor:pointer;font-size:11px">' +
+            'Inserisci KM' +
+          '</button>';
+      } else if (_crtRows.length === 0) {
+        costoCrtHtml = '<span style="color:#aaa;font-size:11px">Tariffario CRT non caricato</span>';
+      } else {
+        costoCrtHtml = '<span style="color:#c0392b;font-style:italic;font-size:11px">-- no match CRT --</span>';
+      }
+
       htmlMancanti+=
         '<tr id="mrow_'+mgi+'">'+
         '<td><span style="display:inline-block;background:#c0392b;color:white;'+
@@ -1396,10 +1556,10 @@
         '<td>'+g.committente+'</td>'+
         '<td>'+g.traffic+'</td>'+
         '<td>'+g.porto.toUpperCase()+'</td>'+
-        '<td id="mcosto_'+mgi+'" style="color:#c0392b;font-style:italic">-- non trovato --</td>'+
+        '<td id="mcosto_'+mgi+'" style="white-space:nowrap;line-height:1.6">'+costoCrtHtml+'</td>'+
         '<td style="font-size:11px;color:#888" id="mnote_'+mgi+'"></td>'+
         '<td style="color:#aaa;font-size:11px" id="mdata_'+mgi+'"></td>'+
-        '<td class="no-print">'+
+        '<td class="no-print" style="white-space:nowrap">'+
           '<button data-mgi="'+mgi+'" class="btn-ins" '+
             'style="padding:3px 7px;background:#e67e22;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px">'+
             '&#x270F;<\/button>'+
@@ -1473,7 +1633,19 @@
       '}'+
       '#print-header{display:none;margin-bottom:16px;border-bottom:2px solid #1a5276;padding-bottom:8px}'+
       '#print-header h2{margin:0 0 2px;color:#1a5276;font-size:18px}'+
-      '#print-header p{margin:0;font-size:11px;color:#666}';
+      '#print-header p{margin:0;font-size:11px;color:#666}'+
+      '#km-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;align-items:center;justify-content:center}'+
+      '#km-overlay.show{display:flex}'+
+      '#km-modale{background:white;border-radius:10px;padding:26px;width:400px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.3);font-family:Arial,sans-serif}'+
+      '#km-modale h3{margin:0 0 6px;color:#e67e22;font-size:15px}'+
+      '#km-modale-sub{font-size:11px;color:#888;margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:10px}'+
+      '#km-modale label{font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px}'+
+      '#km-input{padding:8px 10px;border:1px solid #ccc;border-radius:5px;font-size:16px;width:140px;box-sizing:border-box}'+
+      '#km-hint{font-size:11px;color:#999;margin-top:4px;margin-bottom:14px}'+
+      '#km-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'+
+      '#km-btns button{padding:8px 18px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold}'+
+      '#km-btn-salva{background:#e67e22;color:white}'+
+      '#km-btn-annulla{background:#bdc3c7;color:#333}';
 
     // scriptData: identico a v9.1 tranne _gruppi aggiunto,
     // apriModaleModifica e cancellaRigaTrovati aggiornati per gi
@@ -1484,6 +1656,9 @@
       'var _gruppi='+JSON.stringify(gruppiOrdine.map(function(k){ return gruppiMap[k]; }))+';'+
       'var _LS_LISTINO="'+LS_LISTINO+'";'+
       'var _LS_FUEL_PERC="'+LS_FUEL_PERC+'";'+
+      'var _LS_KM_TRATTE="tcp_km_tratte";'+
+      'var _crtRowsPopup='+JSON.stringify(_crtRows)+';'+
+      'var _addCRTPopup='+JSON.stringify(_addCRT)+';'+
       'var _idxCorrente=null;'+
       'var _chiaveCorrente=null;'+
       'var _giCorrente=null;'+
@@ -1840,6 +2015,75 @@
         'chiudiModale();'+
       '}'+
 
+      /* ── modale inserimento KM per doppia localita ── */
+      'var _kmModaleOpen=false;'+
+      'var _kmMgi=null;'+
+
+      'function apriModaleKm(mgi){'+
+        '_kmMgi=mgi;'+
+        'var g=_mGruppiM[mgi];'+
+        'var inds=(g.indirizzi||[]).join(" \u2192 ");'+
+        'document.getElementById("km-modale-sub").textContent=inds;'+
+        'document.getElementById("km-input").value="";'+
+        'document.getElementById("km-overlay").classList.add("show");'+
+      '}'+
+      'function chiudiModaleKm(){'+
+        'document.getElementById("km-overlay").classList.remove("show");'+
+        '_kmMgi=null;'+
+      '}'+
+      'function salvaKm(){'+
+        'var km=parseFloat(document.getElementById("km-input").value);'+
+        'if(!km||km<=0){alert("Inserisci un valore KM valido (A/R).");return;}'+
+        'var g=_mGruppiM[_kmMgi];'+
+        // Salva KM in localStorage
+        'var kmTratte={};'+
+        'try{var r=localStorage.getItem(_LS_KM_TRATTE);if(r)kmTratte=JSON.parse(r);}catch(e){}'+
+        'kmTratte[g.kmKey]=km;'+
+        'try{localStorage.setItem(_LS_KM_TRATTE,JSON.stringify(kmTratte));}catch(e){}'+
+        // Cerca nel CRT la riga con KM piu vicini
+        'var porto=g.porto||"";'+
+        'var righePorto=_crtRowsPopup.filter(function(r){return(r.porto||"")===porto;});'+
+        'if(!righePorto.length)righePorto=_crtRowsPopup;'+
+        'var rigaKm=null;var diffMin=Infinity;'+
+        'righePorto.forEach(function(r){'+
+          'var k=parseFloat(r.km||0);'+
+          'if(k>0){var d=Math.abs(k-km);if(d<diffMin){diffMin=d;rigaKm=r;}}'+
+        '});'+
+        'if(!rigaKm){alert("Nessuna riga trovata nel CRT con KM simili a "+km+".");chiudiModaleKm();return;}'+
+        // Calcola costo
+        'var ct=g.containerType;'+
+        'var costoBase=parseFloat(ct.isHC?(rigaKm.costo_40||0):(ct.size==="20"?(rigaKm.costo_20||0):(rigaKm.costo_40||0)));'+
+        'if(!costoBase){alert("La riga CRT trovata non ha costo per questa taglia container.");chiudiModaleKm();return;}'+
+        'var fuelPerc=parseFloat(_addCRTPopup.fuel_perc||0);'+
+        'var fuelAmt=fuelPerc>0?parseFloat((costoBase*fuelPerc/100).toFixed(2)):0;'+
+        'var subtotale=parseFloat((costoBase+fuelAmt).toFixed(2));'+
+        'var addExtra=[];'+
+        'if(ct.isHC&&parseFloat(_addCRTPopup.hc||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.hc+" HC");'+
+        'if(parseFloat(_addCRTPopup.adr||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.adr+" ADR");'+
+        'if(parseFloat(_addCRTPopup.seconda_presa||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.seconda_presa+" 2\u00aa presa");'+
+        'if(parseFloat(_addCRTPopup.notte||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.notte+" sosta notte");'+
+        'if(parseFloat(_addCRTPopup.vgm||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.vgm+" VGM");'+
+        'var riga1="\u20ac"+costoBase;'+
+        'if(fuelAmt>0)riga1+=" + \u20ac"+fuelAmt+" fuel ("+fuelPerc+"%) = \u20ac"+subtotale;'+
+        'var riga2=addExtra.join(" ");'+
+        'var label=km+" km A/R \u2192 "+rigaKm.localita+(rigaKm.prov?" ("+rigaKm.prov+")":"");'+
+        'var costoCrtHtml='+
+          '"<span style=\\"font-weight:bold;color:#8e44ad;font-size:12px\\">"+riga1+"</span>"+'+
+          '(riga2?"<span style=\\"color:#7f8c8d;font-size:11px\\"> &nbsp;"+riga2+"</span>":"")+'+
+          '"<br><span style=\\"font-size:10px;color:#2980b9;font-style:italic\\">&#x1F4CC; "+label+"</span>";'+
+        'var td=document.getElementById("mcosto_"+_kmMgi);'+
+        'var td=document.getElementById("mcosto_"+_kmMgi);'+
+        'if(td)td.innerHTML=costoCrtHtml;'+
+        'chiudiModaleKm();'+
+      '}'+
+
+      /* ── delegazione click per btn-km ── */
+      'document.addEventListener("click",function(e){'+
+        'if(e.target.classList.contains("btn-km")){apriModaleKm(parseInt(e.target.dataset.mgi));return;}'+
+        'if(e.target.id==="km-btn-annulla"||e.target.id==="km-overlay"){chiudiModaleKm();return;}'+
+        'if(e.target.id==="km-btn-salva"){salvaKm();return;}'+
+      '});'+
+
       /* ── export excel mancanti ── */
       'function esportaExcel(){'+
         'var hdr=[["lef","orderId","indirizzi","delivery_place","committente","traffic","containerNr","tipoContainer","porto","costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","fuel","note","data_validita"]];'+
@@ -1930,6 +2174,19 @@
         '<\/div>'+
       '<\/div>'+
 
+      '<div id="km-overlay">'+
+        '<div id="km-modale">'+
+          '<h3>&#x1F69A; Inserisci KM per doppia localit\u00e0<\/h3>'+
+          '<div id="km-modale-sub"><\/div>'+
+          '<label>Kilometri A/R totali<\/label>'+
+          '<input type="number" id="km-input" min="1" step="1" placeholder="es. 320">'+
+          '<div id="km-hint">Inserisci i KM andata e ritorno del giro completo.<br>Il costo verr\u00e0 calcolato dalla riga CRT con KM pi\u00f9 vicini.<\/div>'+
+          '<div id="km-btns">'+
+            '<button id="km-btn-annulla">Annulla<\/button>'+
+            '<button id="km-btn-salva">&#x1F4BE; Calcola e salva<\/button>'+
+          '<\/div>'+
+        '<\/div>'+
+      '<\/div>'+
       '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'+
       '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
       '<\/body><\/html>'
