@@ -615,327 +615,193 @@
   function apriTariffarioCRT() {
     panel.style.display = 'none';
 
-    // Leggi righe salvate
     var rows = [];
     try {
       var raw = localStorage.getItem(LS_LISTINO_BASE);
       if (raw) rows = JSON.parse(raw).rows || [];
     } catch(e) { localStorage.removeItem(LS_LISTINO_BASE); }
 
-    // ── Porta i dati nel popup tramite serializzazione JSON ──
-    var rowsJson    = JSON.stringify(rows);
-    var lsKey       = LS_LISTINO_BASE;
-    var gistId      = GIST_ID;
-    var gistFile    = GIST_FILE_BASE;
-    var tokenKey    = LS_TOKEN;
+    var rowsJson = JSON.stringify(rows);
 
-    // ── CSS ──
-    var css = [
-      'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}',
-      '#topbar{display:flex;align-items:center;justify-content:space-between;background:#1a5276;color:white;padding:10px 18px;gap:8px;position:sticky;top:0;z-index:100;flex-wrap:wrap}',
-      '#topbar h2{margin:0;font-size:14px;white-space:nowrap}',
-      '#topbar-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}',
-      '#tabs{display:flex;gap:4px}',
-      '.tab-btn{padding:5px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:rgba(255,255,255,.2);color:white}',
-      '.tab-btn.active{background:white;color:#1a5276}',
-      '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:180px}',
-      '.top-btn{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;color:white;white-space:nowrap}',
-      '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 70px);box-sizing:border-box}',
-      'table{width:100%;border-collapse:collapse;font-size:11px}',
-      'th{background:#1a5276;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}',
-      'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}',
-      'tr:hover td{background:#f0f7ff}',
-      '.tc{color:#27ae60;font-weight:bold}',
-      '.tna{color:#ddd}',
-      '#nrows{font-size:11px;color:#888;margin-top:8px}',
-      '.pb{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:bold;color:white}',
-      '.pb-ITLIV{background:#1a5276}',
-      '.pb-ITSPE{background:#8e44ad}',
-      '.pb-ITGOA{background:#16a085}',
-      '.pb-other{background:#7f8c8d}',
-      /* overlay modale */
-      '#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}',
-      '#overlay.show{display:flex}',
-      '#modale{background:white;border-radius:10px;padding:24px;width:480px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.3)}',
-      '#modale h3{margin:0 0 12px;color:#1a5276;font-size:15px}',
-      '.sep{height:1px;background:#eee;margin:10px 0}',
-      '.fg{display:grid;grid-template-columns:1fr 1fr;gap:8px}',
-      '.fg label{font-size:11px;color:#555;font-weight:bold;display:flex;flex-direction:column;gap:3px}',
-      '.fg input,.fg select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box;width:100%}',
-      '.fg input:focus,.fg select:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.15)}',
-      '.full{grid-column:1/-1}',
-      '.mbtns{margin-top:14px;display:flex;justify-content:flex-end;gap:8px}',
-      '.mbtns button{padding:8px 18px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold}',
-      '.btn-save{background:#27ae60;color:white}',
-      '.btn-cancel{background:#bdc3c7;color:#333}',
-      '.be{padding:3px 7px;border:none;background:#8e44ad;color:white;border-radius:3px;cursor:pointer;font-size:11px;margin-right:2px}',
-      '.bd{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}'
-    ].join('');
+    var cssC = ''
+      + 'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}'
+      + '#topbar{display:flex;align-items:center;justify-content:space-between;background:#1a5276;color:white;padding:10px 18px;gap:8px;position:sticky;top:0;z-index:100;flex-wrap:wrap}'
+      + '#topbar h2{margin:0;font-size:14px;white-space:nowrap}'
+      + '#topbar-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'
+      + '#tabs{display:flex;gap:4px;margin-right:6px}'
+      + '.tab-btn{padding:5px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:rgba(255,255,255,.2);color:white}'
+      + '.tab-btn.active{background:white;color:#1a5276}'
+      + '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:180px}'
+      + '.top-btn{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;color:white;white-space:nowrap}'
+      + '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 70px);box-sizing:border-box}'
+      + 'table{width:100%;border-collapse:collapse;font-size:11px}'
+      + 'th{background:#1a5276;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}'
+      + 'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}'
+      + 'tr:hover td{background:#f0f7ff}'
+      + '.tc{color:#27ae60;font-weight:bold}'
+      + '.tna{color:#ddd}'
+      + '#nrows{font-size:11px;color:#888;margin-top:8px}'
+      + '#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}'
+      + '#overlay.show{display:flex}'
+      + '#modale{background:white;border-radius:10px;padding:24px;width:480px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.3)}'
+      + '#modale h3{margin:0 0 12px;color:#1a5276;font-size:15px}'
+      + '.sep{height:1px;background:#eee;margin:10px 0}'
+      + '.fg{display:grid;grid-template-columns:1fr 1fr;gap:8px}'
+      + '.fg label{font-size:11px;color:#555;font-weight:bold;display:flex;flex-direction:column;gap:3px}'
+      + '.fg input,.fg select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box;width:100%}'
+      + '.fg input:focus,.fg select:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.15)}'
+      + '.full{grid-column:1/-1}'
+      + '.mbtns{margin-top:14px;display:flex;justify-content:flex-end;gap:8px}'
+      + '.mbtns button{padding:8px 18px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold}'
+      + '.btn-save{background:#27ae60;color:white}'
+      + '.btn-cancel{background:#bdc3c7;color:#333}'
+      + '.be{padding:3px 8px;border:none;background:#8e44ad;color:white;border-radius:3px;cursor:pointer;font-size:11px;margin-right:2px}'
+      + '.bd{padding:3px 8px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}';
 
-    // ── Script dati (iniettato prima della logica) ──
     var scriptData =
-      'var _rows=' + rowsJson + ';' +
-      'var _editIdx=null;' +
-      'var _fp="ITLIV";' +
-      'var _LS=' + JSON.stringify(lsKey) + ';' +
-      'var _GID=' + JSON.stringify(gistId) + ';' +
-      'var _GF=' + JSON.stringify(gistFile) + ';' +
-      'var _TK=' + JSON.stringify(tokenKey) + ';';
+      'var _rows=' + rowsJson + ';'
+      + 'var _editIdx=null;'
+      + 'var _fp="ITLIV";'
+      + 'var _LS="' + LS_LISTINO_BASE + '";'
+      + 'var _GID="' + GIST_ID + '";'
+      + 'var _GF="' + GIST_FILE_BASE + '";'
+      + 'var _TK="' + LS_TOKEN + '";'
+      + 'var _mappaPorto={"livorno":"ITLIV","la spezia":"ITSPE","laspezia":"ITSPE","spezia":"ITSPE","genova":"ITGOA","ge":"ITGOA"};'
+      + 'var _inputXls=null;';
 
-    // ── Script logica ──
-    // NOTA: tutto il JS del popup è una stringa concatenata.
-    // Usiamo doppi apici per l'HTML interno e backslash per i doppi apici nelle stringhe HTML.
     var scriptLogic = ''
-
-    // --- Salva su LS e push Gist ---
     + 'function saveCRT(rows){'
     +   'try{localStorage.setItem(_LS,JSON.stringify({rows:rows,loaded_at:new Date().toISOString()}));}catch(e){}'
     +   'var tok=localStorage.getItem(_TK);if(!tok)return;'
-    +   'fetch("https://api.github.com/gists/"+_GID,{'
-    +     'method:"PATCH",'
-    +     'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},'
-    +     'body:JSON.stringify({files:{[_GF]:{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})'
-    +   '}).catch(function(){});'
+    +   'fetch("https://api.github.com/gists/"+_GID,{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{[_GF]:{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});'
     + '}'
-
-    // --- Render tabella ---
-    + 'function tcell(val){'
-    +   'return val?("<td class=\'tc\'>"+val+"</td>"):"<td class=\'tna\'>-</td>";'
-    + '}'
+    + 'function tcell(val){return val?("<td class=\\"tc\\">"+val+"</td>"):"<td class=\\"tna\\">-</td>";}'
     + 'function renderTable(){'
     +   'var filter=(document.getElementById("search").value||"").toLowerCase();'
     +   'var html="";var count=0;'
-    +   'var righe=_rows.filter(function(r){return(r.porto||"")===_fp;});'
-    +   'righe.forEach(function(r,vi){'
-    +     // indice globale nella array _rows
-    +     'var gi=_rows.indexOf(r);'
-    +     'var s=[(r.cap||""),(r.prov||""),(r.localita||""),(r.km||"")].join(" ").toLowerCase();'
+    +   '_rows.forEach(function(r,gi){'
+    +     'if((r.porto||"")!==_fp)return;'
+    +     'var s=[(r.cap||""),(r.prov||""),(r.localita||"")].join(" ").toLowerCase();'
     +     'if(filter&&!s.includes(filter))return;'
     +     'count++;'
     +     'html+="<tr>";'
-    +     'html+="<td style=\'color:#aaa;font-size:10px\'>"+(count)+"</td>";'
+    +     'html+="<td style=\\"color:#aaa;font-size:10px\\">"+count+"</td>";'
     +     'html+="<td>"+(r.cap||"")+"</td>";'
     +     'html+="<td>"+(r.prov||"").toUpperCase()+"</td>";'
-    +     'html+="<td style=\'font-weight:bold\'>"+(r.localita||"")+"</td>";'
-    +     'html+=tcell(r.km);'
-    +     'html+=tcell(r.costo_20);'
-    +     'html+=tcell(r.costo_40);'
-    +     'html+=tcell(r.costo_hc);'
-    +     'html+="<td><button class=\'be\' data-gi=\'"+gi+"\'>&#x270F;</button>'
-    +           '<button class=\'bd\' data-gi=\'"+gi+"\'>&#x1F5D1;</button></td>";'
+    +     'html+="<td style=\\"font-weight:bold\\">"+(r.localita||"")+"</td>";'
+    +     'html+=tcell(r.km);html+=tcell(r.costo_20);html+=tcell(r.costo_40);html+=tcell(r.costo_hc);'
+    +     'html+="<td><button class=\\"be\\" data-gi=\\""+gi+"\\">&#x270F;</button><button class=\\"bd\\" data-gi=\\""+gi+"\\">Canc</button></td>";'
     +     'html+="</tr>";'
     +   '});'
     +   'document.getElementById("tbody").innerHTML=html;'
     +   'var tot=_rows.filter(function(r){return(r.porto||"")===_fp;}).length;'
-    +   'document.getElementById("nrows").textContent='
-    +     '"Visualizzate: "+count+" / "+tot+" tariffe \u2014 Archivio totale: "+_rows.length;'
+    +   'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+tot+" \u2014 Totale: "+_rows.length;'
     + '}'
-
-    // --- Apri form ---
     + 'function apriForm(gi){'
     +   '_editIdx=gi;'
     +   'var r=gi>=0?_rows[gi]:{};'
     +   'document.getElementById("m-titolo").textContent=gi>=0?"Modifica tariffa":"Nuova tariffa";'
-    +   '["cap","prov","localita","km","costo_20","costo_40","costo_hc"].forEach(function(f){'
-    +     'var el=document.getElementById("cf-"+f);if(el)el.value=r[f]||"";'
-    +   '});'
-    +   'var sel=document.getElementById("cf-porto");'
-    +   'if(sel)sel.value=gi>=0?(r.porto||_fp):_fp;'
+    +   '["cap","prov","localita","km","costo_20","costo_40","costo_hc"].forEach(function(f){var el=document.getElementById("cf-"+f);if(el)el.value=r[f]||"";});'
+    +   'var sel=document.getElementById("cf-porto");if(sel)sel.value=gi>=0?(r.porto||_fp):_fp;'
     +   'document.getElementById("overlay").classList.add("show");'
     + '}'
-
-    // --- Chiudi form ---
-    + 'function chiudiForm(){'
-    +   'document.getElementById("overlay").classList.remove("show");'
-    +   '_editIdx=null;'
-    + '}'
-
-    // --- Salva form ---
+    + 'function chiudiForm(){document.getElementById("overlay").classList.remove("show");_editIdx=null;}'
     + 'function salvaForm(){'
-    +   'var r={};'
-    +   '["cap","prov","localita","km","costo_20","costo_40","costo_hc"].forEach(function(f){'
-    +     'var el=document.getElementById("cf-"+f);r[f]=el?el.value.trim():"";'
-    +   '});'
+    +   'var r={};["cap","prov","localita","km","costo_20","costo_40","costo_hc"].forEach(function(f){var el=document.getElementById("cf-"+f);r[f]=el?el.value.trim():"";});'
     +   'r.porto=document.getElementById("cf-porto").value;'
     +   'if(!r.localita){alert("La Localit\u00e0 \u00e8 obbligatoria.");return;}'
     +   'if(_editIdx>=0){_rows[_editIdx]=r;}else{_rows.push(r);}'
     +   'saveCRT(_rows);chiudiForm();renderTable();'
     + '}'
-
-    // --- Cancella ---
-    + 'function cancella(gi){'
-    +   'if(!confirm("Cancellare questa tariffa?"))return;'
-    +   '_rows.splice(gi,1);'
-    +   'saveCRT(_rows);renderTable();'
-    + '}'
-
-    // --- Sync da Gist ---
+    + 'function cancella(gi){if(!confirm("Cancellare questa tariffa?"))return;_rows.splice(gi,1);saveCRT(_rows);renderTable();}'
     + 'function syncGist(){'
-    +   'var tok=localStorage.getItem(_TK);'
-    +   'if(!tok){alert("Token non configurato.");return;}'
-    +   'fetch("https://api.github.com/gists/"+_GID,{'
-    +     'headers:{"Authorization":"token "+tok,"Accept":"application/vnd.github.v3+json"}'
-    +   '}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})'
-    +   '.then(function(gd){'
-    +     'var raw=(gd.files[_GF]&&gd.files[_GF].content)||null;'
-    +     'if(!raw){alert("File non trovato sul Gist.");return;}'
-    +     'var data;try{data=JSON.parse(raw);}catch(e){alert("Errore parsing.");return;}'
-    +     '_rows=data.rows||[];'
-    +     'try{localStorage.setItem(_LS,JSON.stringify({rows:_rows,loaded_at:new Date().toISOString()}));}catch(e){}'
-    +     'renderTable();alert("Sync OK: "+_rows.length+" tariffe.");'
-    +   '}).catch(function(e){alert("Errore sync: "+e.message);});'
+    +   'var tok=localStorage.getItem(_TK);if(!tok){alert("Token non configurato.");return;}'
+    +   'fetch("https://api.github.com/gists/"+_GID,{headers:{"Authorization":"token "+tok,"Accept":"application/vnd.github.v3+json"}})'
+    +   '.then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})'
+    +   '.then(function(gd){var raw=(gd.files[_GF]&&gd.files[_GF].content)||null;if(!raw){alert("File non trovato.");return;}var data;try{data=JSON.parse(raw);}catch(e){alert("Errore parsing.");return;}_rows=data.rows||[];try{localStorage.setItem(_LS,JSON.stringify({rows:_rows,loaded_at:new Date().toISOString()}));}catch(e){}renderTable();alert("Sync OK: "+_rows.length+" tariffe.");})'
+    +   '.catch(function(e){alert("Errore sync: "+e.message);});'
     + '}'
-
-    // --- Importa Excel ---
-    // Parsing valori: strippare €, spazi, caratteri non numerici
-    + 'function parseEuro(v){'
-    +   'if(v===undefined||v===null)return "";'
-    +   'var s=String(v).replace(/[€\\s]/g,"").replace(",",".").trim();'
-    +   'return isNaN(parseFloat(s))?"":s;'
-    + '}'
-    + 'var _inputXls=document.createElement("input");'
-    + '_inputXls.type="file";_inputXls.accept=".xlsx,.xls";_inputXls.style.display="none";'
-    + 'document.body.appendChild(_inputXls);'
-    + '_inputXls.addEventListener("change",function(){'
-    +   'var f=_inputXls.files[0];if(!f)return;'
-    +   'var reader=new FileReader();'
-    +   'reader.onload=function(ev){'
-    +     'try{'
-    +       'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});'
-    +       'var nuove=[];'
-    +       'var mappaPorto={'
-    +         '"livorno":"ITLIV","la spezia":"ITSPE","laspezia":"ITSPE",'
-    +         '"spezia":"ITSPE","genova":"ITGOA","ge":"ITGOA"'
-    +       '};'
-    +       'wb.SheetNames.forEach(function(sn){'
-    +         'var snl=sn.toLowerCase().replace(/\\s+/g,"");'
-    +         'var snOrig=sn.toLowerCase().trim();'
-    +         'var porto=mappaPorto[snOrig]||mappaPorto[snl]||null;'
-    +         'if(!porto)return;'  // salta fogli non riconosciuti
+    + 'function parseEuro(v){if(v===undefined||v===null)return "";var s=String(v).replace(/[\u20ac\s]/g,"").replace(",",".").trim();return isNaN(parseFloat(s))?"":s;}'
+    + 'function importaExcel(){'
+    +   'if(!_inputXls){_inputXls=document.createElement("input");_inputXls.type="file";_inputXls.accept=".xlsx,.xls";_inputXls.style.display="none";document.body.appendChild(_inputXls);'
+    +     '_inputXls.addEventListener("change",function(){var f=_inputXls.files[0];if(!f)return;var reader=new FileReader();reader.onload=function(ev){try{'
+    +       'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});var nuove=[];'
+    +       'wb.SheetNames.forEach(function(sn){var snl=sn.toLowerCase().trim().replace(/\\s+/g,"");var snO=sn.toLowerCase().trim();var porto=_mappaPorto[snO]||_mappaPorto[snl]||null;if(!porto)return;'
     +         'var rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:"",raw:false});'
-    +         'rr.forEach(function(row){'
-    +           // CAP: colonna A
-    +           'var cap=String(row["CAP"]||row["cap"]||"").trim();'
-    +           // Provincia: colonna B (intestazione "Pro" o "Prov")
-    +           'var prov=String(row["Pro"]||row["Prov"]||row["prov"]||row["Provincia"]||"").trim();'
-    +           // Località: colonna C
-    +           'var loc=String(row["Localit\u00e0"]||row["Localita"]||row["localita"]||row["LOCALITA"]||"").trim();'
-    +           // KM: colonna D
-    +           'var km=String(row["DIST KM A/R"]||row["KM"]||row["km"]||row["Dist KM A/R"]||"").trim();'
-    +           // 20': colonna E
-    +           'var c20=parseEuro(row["20\'"]||row["20"]||row["costo_20"]||"");'
-    +           // 40'/20 HT: colonna F
-    +           'var c40=parseEuro(row["40\'/20 HT"]||row["40\'"]||row["40"]||row["costo_40"]||"");'
-    +           // 40 HC: colonna G — supplemento
+    +         'rr.forEach(function(row){var cap=String(row["CAP"]||row["cap"]||"").trim();var prov=String(row["Pro"]||row["Prov"]||row["prov"]||"").trim();'
+    +           'var loc=String(row["Localit\u00e0"]||row["Localita"]||row["localita"]||"").trim();'
+    +           'var km=String(row["DIST KM A/R"]||row["Dist KM A/R"]||row["KM"]||row["km"]||"").trim();'
+    +           'var c20=parseEuro(row["20\u0027"]||row["20"]||row["costo_20"]||"");'
+    +           'var c40=parseEuro(row["40\u0027/20 HT"]||row["40\u0027"]||row["40"]||row["costo_40"]||"");'
     +           'var chc=parseEuro(row["40 HC"]||row["HC"]||row["costo_hc"]||"");'
     +           'if(loc)nuove.push({porto:porto,cap:cap,prov:prov,localita:loc,km:km,costo_20:c20,costo_40:c40,costo_hc:chc});'
     +         '});'
     +       '});'
-    +       'if(!nuove.length){alert("Nessuna riga trovata.\\nVerifica che i fogli si chiamino Livorno, La Spezia o Genova.");return;}'
-    +       'if(confirm("Trovate "+nuove.length+" tariffe da:\\n"+wb.SheetNames.filter(function(s){var sl=s.toLowerCase().trim();return mappaPorto[sl]||mappaPorto[sl.replace(/\\s+/g,"")];}).join(", ")+"\\n\\nOK = Sostituisci\\nAnnulla = Aggiungi alle esistenti")){'
-    +         '_rows=nuove;'
-    +       '}else{'
-    +         '_rows=_rows.concat(nuove);'
-    +       '}'
+    +       'if(!nuove.length){alert("Nessuna riga trovata.\nVerifica nomi fogli: Livorno, La Spezia, Genova.");return;}'
+    +       'if(confirm("Trovate "+nuove.length+" tariffe.\n\nOK = Sostituisci\nAnnulla = Aggiungi")){_rows=nuove;}else{_rows=_rows.concat(nuove);}'
     +       'saveCRT(_rows);renderTable();alert("Importate "+nuove.length+" tariffe.");'
-    +     '}catch(e){alert("Errore lettura file: "+e.message);}'
-    +   '};'
-    +   'reader.readAsArrayBuffer(f);'
-    + '});'
-
-    // --- Esporta Excel ---
-    + 'function esportaExcel(){'
-    +   'var wb=XLSX.utils.book_new();'
-    +   'var map={"ITLIV":"Livorno","ITSPE":"La Spezia","ITGOA":"Genova"};'
-    +   'Object.keys(map).forEach(function(pc){'
-    +     'var rr=_rows.filter(function(r){return(r.porto||"")===pc;});'
-    +     'if(!rr.length)return;'
-    +     'var data=[["CAP","Pro","Localit\u00e0","DIST KM A/R","20\'","40\'/20 HT","40 HC"]];'
-    +     'rr.forEach(function(r){data.push([r.cap||"",r.prov||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||"",r.costo_hc||""]);});'
-    +     'XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),map[pc]);'
-    +   '});'
-    +   'if(!wb.SheetNames.length){alert("Nessuna tariffa da esportare.");return;}'
-    +   'XLSX.writeFile(wb,"tariffario_crt_"+new Date().toISOString().slice(0,10)+".xlsx");'
+    +     '}catch(e){alert("Errore lettura: "+e.message);}};reader.readAsArrayBuffer(f);});'
+    +   '}'
+    +   '_inputXls.value="";_inputXls.click();'
     + '}'
-
-    // --- Switch tab ---
-    + 'function switchTab(porto){'
-    +   '_fp=porto;'
-    +   'document.querySelectorAll(".tab-btn").forEach(function(b){'
-    +     'b.classList.toggle("active",b.dataset.porto===porto);'
-    +   '});'
-    +   'renderTable();'
-    + '}'
-
-    // --- Delegazione click globale ---
+    + 'function esportaExcel(){var wb=XLSX.utils.book_new();var mappa={"ITLIV":"Livorno","ITSPE":"La Spezia","ITGOA":"Genova"};Object.keys(mappa).forEach(function(pc){var rr=_rows.filter(function(r){return(r.porto||"")===pc;});if(!rr.length)return;var data=[["CAP","Pro","Localit\u00e0","DIST KM A/R","20\u0027","40\u0027/20 HT","40 HC"]];rr.forEach(function(r){data.push([r.cap||"",r.prov||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||"",r.costo_hc||""]);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),mappa[pc]);});if(!wb.SheetNames.length){alert("Nessuna tariffa.");return;}XLSX.writeFile(wb,"tariffario_crt_"+new Date().toISOString().slice(0,10)+".xlsx");}'
     + 'document.addEventListener("click",function(e){'
     +   'var t=e.target;'
-    +   'if(t.classList.contains("tab-btn")){switchTab(t.dataset.porto);return;}'
-    +   'if(t.id==="btn-nuova"){apriForm(-1);return;}'
     +   'if(t.id==="btn-sync"){syncGist();return;}'
-    +   'if(t.id==="btn-carica"){_inputXls.value="";_inputXls.click();return;}'
+    +   'if(t.id==="btn-nuova"){apriForm(-1);return;}'
+    +   'if(t.id==="btn-carica"){importaExcel();return;}'
     +   'if(t.id==="btn-export"){esportaExcel();return;}'
-    +   'if(t.classList.contains("be")){apriForm(parseInt(t.dataset.gi));return;}'
-    +   'if(t.classList.contains("bd")){cancella(parseInt(t.dataset.gi));return;}'
-    +   'if(t.id==="btn-annulla"||t.id==="overlay"){chiudiForm();return;}'
     +   'if(t.id==="btn-salva"){salvaForm();return;}'
+    +   'if(t.id==="btn-annulla"||t.id==="overlay"){chiudiForm();return;}'
+    +   'if(t.className==="be"){apriForm(parseInt(t.dataset.gi));return;}'
+    +   'if(t.className==="bd"){cancella(parseInt(t.dataset.gi));return;}'
+    +   'if(t.className==="tab-btn"||t.className==="tab-btn active"){'
+    +     '_fp=t.dataset.porto;'
+    +     'document.querySelectorAll(".tab-btn").forEach(function(b){b.className="tab-btn"+(b.dataset.porto===_fp?" active":"");});'
+    +     'renderTable();return;'
+    +   '}'
     + '});'
-
     + 'document.getElementById("search").addEventListener("input",renderTable);'
     + 'renderTable();';
 
-    // ── HTML del popup ──
     var thH = '<th>#</th><th>CAP</th><th>Prov</th><th>Localit\u00e0</th>'
-            + '<th>KM A/R</th><th>20\'</th><th>40\'/HT</th><th>40 HC (+suppl)</th><th>Azioni</th>';
+            + '<th>KM A/R</th><th>20\'</th><th>40\'/HT</th><th>40 HC suppl.</th><th>Azioni</th>';
 
     var popup = window.open('', 'tcp_crt', 'width=1050,height=720,scrollbars=yes,resizable=yes');
     popup.document.write(
       '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tariffario C.R.T.<\/title>'
-      + '<style>' + css + '<\/style><\/head><body>'
+      + '<style>' + cssC + '<\/style><\/head><body>'
       + '<div id="topbar">'
       +   '<h2>&#x1F4CA; Tariffario C.R.T.<\/h2>'
       +   '<div id="tabs">'
       +     '<button class="tab-btn active" data-porto="ITLIV">Livorno<\/button>'
-      +     '<button class="tab-btn" data-porto="ITSPE">La Spezia<\/button>'
-      +     '<button class="tab-btn" data-porto="ITGOA">Genova<\/button>'
+      +     '<button class="tab-porto" data-porto="ITSPE">La Spezia<\/button>'
+      +     '<button class="tab-porto" data-porto="ITGOA">Genova<\/button>'
       +   '<\/div>'
       +   '<div id="topbar-right">'
-      +     '<input id="search" placeholder="\uD83D\uDD0D Filtra localit\u00e0, CAP, prov...">'
-      +     '<button class="top-btn" id="btn-sync" style="background:#2980b9">&#x2601; Sync<\/button>'
-      +     '<button class="top-btn" id="btn-nuova" style="background:#27ae60">&#x2795; Nuova<\/button>'
-      +     '<button class="top-btn" id="btn-carica" style="background:#e67e22">&#x1F4C2; Carica Excel<\/button>'
-      +     '<button class="top-btn" id="btn-export" style="background:#16a085">&#x1F4BE; Esporta<\/button>'
+      +     '<input id="search" placeholder="\uD83D\uDD0D Filtra...">'
+      +     '<button class="top-btn" id="btn-sync" style="background:#2980b9">Sync<\/button>'
+      +     '<button class="top-btn" id="btn-nuova" style="background:#27ae60">+ Nuova<\/button>'
+      +     '<button class="top-btn" id="btn-carica" style="background:#e67e22">Carica Excel<\/button>'
+      +     '<button class="top-btn" id="btn-export" style="background:#16a085">Esporta<\/button>'
       +   '<\/div>'
       + '<\/div>'
-      + '<div id="table-wrap">'
-      +   '<table><thead><tr>' + thH + '<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table>'
-      +   '<div id="nrows"><\/div>'
-      + '<\/div>'
-      + '<div id="overlay">'
-      +   '<div id="modale">'
-      +     '<h3 id="m-titolo">Nuova tariffa<\/h3>'
-      +     '<div class="sep"><\/div>'
-      +     '<div class="fg">'
-      +       '<label>Porto<select id="cf-porto">'
-      +         '<option value="ITLIV">Livorno (ITLIV)<\/option>'
-      +         '<option value="ITSPE">La Spezia (ITSPE)<\/option>'
-      +         '<option value="ITGOA">Genova (ITGOA)<\/option>'
-      +       '<\/select><\/label>'
-      +       '<label>CAP<input type="text" id="cf-cap" maxlength="10" placeholder="es. 50100"><\/label>'
-      +       '<label>Prov<input type="text" id="cf-prov" maxlength="5" placeholder="es. SP"><\/label>'
-      +       '<label class="full">Localit\u00e0<input type="text" id="cf-localita" placeholder="es. La Spezia"><\/label>'
-      +       '<label>KM A/R<input type="number" id="cf-km" min="0" placeholder="es. 18"><\/label>'
-      +       '<label class="full" style="border-top:2px solid #ebf5fb;padding-top:8px;margin-top:4px;font-size:11px;color:#1a5276;text-transform:uppercase;letter-spacing:.5px">Tariffe<\/label>'
-      +       '<label>Costo 20\' (&euro;)<input type="number" id="cf-costo_20" min="0" step="0.01" placeholder="es. 361"><\/label>'
-      +       '<label>Costo 40\'\/HT (&euro;)<input type="number" id="cf-costo_40" min="0" step="0.01" placeholder="es. 381"><\/label>'
-      +       '<label>Suppl. HC (&euro;)<input type="number" id="cf-costo_hc" min="0" step="0.01" placeholder="es. 30"><\/label>'
-      +     '<\/div>'
-      +     '<div class="mbtns">'
-      +       '<button class="btn-cancel" id="btn-annulla">Annulla<\/button>'
-      +       '<button class="btn-save" id="btn-salva">&#x1F4BE; Salva<\/button>'
-      +     '<\/div>'
+      + '<div id="table-wrap"><table><thead><tr>' + thH + '<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table><div id="nrows"><\/div><\/div>'
+      + '<div id="overlay"><div id="modale">'
+      +   '<h3 id="m-titolo">Nuova tariffa<\/h3><div class="sep"><\/div>'
+      +   '<div class="fg">'
+      +     '<label>Porto<select id="cf-porto"><option value="ITLIV">Livorno<\/option><option value="ITSPE">La Spezia<\/option><option value="ITGOA">Genova<\/option><\/select><\/label>'
+      +     '<label>CAP<input type="text" id="cf-cap" maxlength="10" placeholder="es. 19100"><\/label>'
+      +     '<label>Prov<input type="text" id="cf-prov" maxlength="5" placeholder="es. SP"><\/label>'
+      +     '<label class="full">Localit\u00e0<input type="text" id="cf-localita" placeholder="es. La Spezia"><\/label>'
+      +     '<label>KM A/R<input type="number" id="cf-km" min="0" placeholder="es. 18"><\/label>'
+      +     '<label class="full" style="border-top:2px solid #ebf5fb;padding-top:8px;margin-top:4px;font-size:11px;color:#1a5276;text-transform:uppercase;letter-spacing:.5px">Tariffe<\/label>'
+      +     '<label>Costo 20\u0027 (&euro;)<input type="number" id="cf-costo_20" min="0" step="0.01"><\/label>'
+      +     '<label>Costo 40\u0027\/HT (&euro;)<input type="number" id="cf-costo_40" min="0" step="0.01"><\/label>'
+      +     '<label>Suppl. HC (&euro;)<input type="number" id="cf-costo_hc" min="0" step="0.01"><\/label>'
       +   '<\/div>'
-      + '<\/div>'
+      +   '<div class="mbtns"><button class="btn-cancel" id="btn-annulla">Annulla<\/button><button class="btn-save" id="btn-salva">Salva<\/button><\/div>'
+      + '<\/div><\/div>'
       + '<scr'+'ipt>' + scriptData + '<\/scr'+'ipt>'
       + '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'
       + '<scr'+'ipt>' + scriptLogic + '<\/scr'+'ipt>'
@@ -1317,6 +1183,79 @@
     popup.document.close();
   }
 
+
+  // ═══════════════════════════════════════════════
+  //  MATCH CRT — calcola costo da tariffario base
+  // ═══════════════════════════════════════════════
+
+  function parseIndirizzoDettaglio(addr) {
+    var cap  = '';
+    var prov = '';
+    var loc  = '';
+    var mCap  = addr.match(/\b(\d{5})\b/);
+    if (mCap) cap = mCap[1];
+    var mProv = addr.match(/\(([A-Za-z]{2})\)/);
+    if (mProv) prov = mProv[1].toUpperCase();
+    var pulito = addr
+      .replace(/\b\d{5}\b/, '')
+      .replace(/\([A-Za-z]{2}\)/, '')
+      .replace(/Via |Viale |Corso |Piazza |Largo |Str\. |Strada |Loc\. /gi, '')
+      .replace(/,/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    var parti = pulito.split(' ').filter(function(p){ return p.length > 2 && isNaN(p); });
+    if (parti.length > 0) loc = parti[parti.length - 1];
+    return { cap: cap, prov: prov, loc: loc.toLowerCase() };
+  }
+
+  function cercaCRT(indirizzo, porto, crtRows) {
+    if (!crtRows || crtRows.length === 0) return null;
+    var det = parseIndirizzoDettaglio(indirizzo || '');
+    var righePorto = crtRows.filter(function(r){ return (r.porto || '') === porto; });
+    if (righePorto.length === 0) righePorto = crtRows;
+
+    if (det.loc && det.loc.length > 2) {
+      var byLoc = righePorto.filter(function(r){
+        return (r.localita || '').toLowerCase().indexOf(det.loc) !== -1 ||
+               det.loc.indexOf((r.localita || '').toLowerCase()) !== -1;
+      });
+      if (byLoc.length === 1) return { riga: byLoc[0], metodo: 'loc', label: byLoc[0].localita + (byLoc[0].prov ? ' (' + byLoc[0].prov + ')' : '') };
+      if (byLoc.length > 1 && det.prov) {
+        var byLocProv = byLoc.filter(function(r){ return (r.prov || '').toUpperCase() === det.prov; });
+        if (byLocProv.length > 0) return { riga: byLocProv[0], metodo: 'loc', label: byLocProv[0].localita + ' (' + byLocProv[0].prov + ')' };
+      }
+      if (byLoc.length > 0) return { riga: byLoc[0], metodo: 'loc', label: byLoc[0].localita + (byLoc[0].prov ? ' (' + byLoc[0].prov + ')' : '') };
+    }
+
+    if (det.cap) {
+      var byCap = righePorto.filter(function(r){ return (r.cap || '').replace(/\s/g,'') === det.cap; });
+      if (byCap.length > 0) return { riga: byCap[0], metodo: 'cap', label: 'CAP ' + det.cap + ' \u2192 ' + byCap[0].localita };
+    }
+    return null;
+  }
+
+  function calcolaCRT(rigaCRT, containerType, addizionali) {
+    var ct = containerType;
+    var costoBase = parseFloat(ct.isHC ? (rigaCRT.costo_40 || 0) : (ct.size === '20' ? (rigaCRT.costo_20 || 0) : (rigaCRT.costo_40 || 0)));
+    if (isNaN(costoBase) || costoBase === 0) return null;
+    var add      = addizionali || {};
+    var fuelPerc = parseFloat(add.fuel_perc || 0);
+    var fuelAmt  = fuelPerc > 0 ? parseFloat((costoBase * fuelPerc / 100).toFixed(2)) : 0;
+    var subtotale = parseFloat((costoBase + fuelAmt).toFixed(2));
+    var addExtra = [];
+    if (ct.isHC && parseFloat(add.hc || 0) > 0)
+      addExtra.push({ label: 'HC', amt: parseFloat(add.hc) });
+    if (parseFloat(add.adr || 0) > 0)
+      addExtra.push({ label: 'ADR', amt: parseFloat(add.adr) });
+    if (parseFloat(add.seconda_presa || 0) > 0)
+      addExtra.push({ label: '2\u00aa presa', amt: parseFloat(add.seconda_presa) });
+    if (parseFloat(add.notte || 0) > 0)
+      addExtra.push({ label: 'sosta notte', amt: parseFloat(add.notte) });
+    if (parseFloat(add.vgm || 0) > 0)
+      addExtra.push({ label: 'VGM', amt: parseFloat(add.vgm) });
+    return { costoBase: costoBase, fuelAmt: fuelAmt, fuelPerc: fuelPerc, subtotale: subtotale, addExtra: addExtra };
+  }
+
   // ═══════════════════════════════════════════════
   //  POPUP RISULTATI
   // ═══════════════════════════════════════════════
@@ -1406,10 +1345,46 @@
       });
     })();
 
+    // Leggi CRT e addizionali
+    var _crtRows = [];
+    var _addCRT  = {};
+    try { var _rawCRT = localStorage.getItem(LS_LISTINO_BASE); if (_rawCRT) _crtRows = JSON.parse(_rawCRT).rows || []; } catch(e) {}
+    try { var _rawAdd = localStorage.getItem(LS_ADDIZIONALI);  if (_rawAdd) _addCRT  = JSON.parse(_rawAdd); } catch(e) {}
+    var _kmTratte = {};
+    try { var _rawKm = localStorage.getItem('tcp_km_tratte'); if (_rawKm) _kmTratte = JSON.parse(_rawKm); } catch(e) {}
+
+    mGruppiM.forEach(function(g) {
+      var indirizzi = g.indirizzi || [];
+      var isDoppia  = indirizzi.length > 1 && (indirizzi[1] || '').trim() !== '';
+      var porto     = g.porto || '';
+      var kmKey = [norm(indirizzi[0]||''), norm(indirizzi[1]||''), norm(porto)].join('|||');
+      g.isDoppia = isDoppia;
+      g.kmKey    = kmKey;
+
+      if (isDoppia) {
+        if (_kmTratte[kmKey]) {
+          var kmSalvati = parseFloat(_kmTratte[kmKey]);
+          var rigaKm = null; var diffMin = Infinity;
+          _crtRows.filter(function(r){ return (r.porto||'') === porto || porto === ''; }).forEach(function(r) {
+            var km = parseFloat(r.km || 0);
+            if (km > 0) { var diff = Math.abs(km - kmSalvati); if (diff < diffMin) { diffMin = diff; rigaKm = r; } }
+          });
+          if (rigaKm) {
+            var calc = calcolaCRT(rigaKm, g.containerType, _addCRT);
+            if (calc) { g.crtMatch = { riga: rigaKm, metodo: 'km', label: kmSalvati + ' km A/R \u2192 ' + rigaKm.localita }; g.crtCalc = calc; }
+          }
+        }
+        if (!g.crtMatch) g.crtNeedKm = true;
+      } else {
+        var match = cercaCRT(indirizzi[0] || '', porto, _crtRows);
+        if (match) { var calc2 = calcolaCRT(match.riga, g.containerType, _addCRT); if (calc2) { g.crtMatch = match; g.crtCalc = calc2; } }
+      }
+    });
+
     var thCols =
       '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
       '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
-      '<th>Costo</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
+      '<th>Costo CRT</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
 
     // Genera HTML trovati raggruppati
     var htmlTrovati='';
@@ -1454,6 +1429,31 @@
     var htmlMancanti='';
     mGruppiM.forEach(function(g,mgi){
       var n=g.containers.length;
+
+      var costoCrtHtml = '';
+      if (g.crtCalc) {
+        var c = g.crtCalc;
+        var metodo = g.crtMatch ? g.crtMatch.label : '';
+        var riga1 = '\u20ac' + c.costoBase;
+        if (c.fuelAmt > 0) riga1 += ' + \u20ac' + c.fuelAmt + ' fuel (' + c.fuelPerc + '%) = \u20ac' + c.subtotale;
+        var riga2 = c.addExtra.map(function(x){ return '+ \u20ac' + x.amt + ' ' + x.label; }).join(' ');
+        costoCrtHtml =
+          '<span style="font-weight:bold;color:#8e44ad;font-size:12px">' + riga1 + '</span>' +
+          (riga2 ? '<span style="color:#7f8c8d;font-size:11px"> &nbsp;' + riga2 + '</span>' : '') +
+          '<br><span style="font-size:10px;color:#2980b9;font-style:italic">&#x1F4CC; ' + metodo + '</span>';
+      } else if (g.crtNeedKm) {
+        costoCrtHtml =
+          '<span style="color:#e67e22;font-size:11px">&#x1F69A; Doppia loc. &mdash; </span>' +
+          '<button class="btn-km" data-mgi="' + mgi + '" ' +
+            'style="padding:2px 8px;border:none;background:#e67e22;color:white;border-radius:3px;cursor:pointer;font-size:11px">' +
+            'Inserisci KM' +
+          '</button>';
+      } else if (_crtRows.length === 0) {
+        costoCrtHtml = '<span style="color:#aaa;font-size:11px">Tariffario CRT non caricato</span>';
+      } else {
+        costoCrtHtml = '<span style="color:#c0392b;font-style:italic;font-size:11px">-- no match CRT --</span>';
+      }
+
       htmlMancanti+=
         '<tr id="mrow_'+mgi+'">'+
         '<td><span style="display:inline-block;background:#c0392b;color:white;'+
@@ -1468,10 +1468,10 @@
         '<td>'+g.committente+'</td>'+
         '<td>'+g.traffic+'</td>'+
         '<td>'+g.porto.toUpperCase()+'</td>'+
-        '<td id="mcosto_'+mgi+'" style="color:#c0392b;font-style:italic">-- non trovato --</td>'+
+        '<td id="mcosto_'+mgi+'" style="white-space:nowrap;line-height:1.6">'+costoCrtHtml+'</td>'+
         '<td style="font-size:11px;color:#888" id="mnote_'+mgi+'"></td>'+
         '<td style="color:#aaa;font-size:11px" id="mdata_'+mgi+'"></td>'+
-        '<td class="no-print">'+
+        '<td class="no-print" style="white-space:nowrap">'+
           '<button data-mgi="'+mgi+'" class="btn-ins" '+
             'style="padding:3px 7px;background:#e67e22;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px">'+
             '&#x270F;<\/button>'+
@@ -1545,7 +1545,19 @@
       '}'+
       '#print-header{display:none;margin-bottom:16px;border-bottom:2px solid #1a5276;padding-bottom:8px}'+
       '#print-header h2{margin:0 0 2px;color:#1a5276;font-size:18px}'+
-      '#print-header p{margin:0;font-size:11px;color:#666}';
+      '#print-header p{margin:0;font-size:11px;color:#666}'+
+      '#km-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;align-items:center;justify-content:center}'+
+      '#km-overlay.show{display:flex}'+
+      '#km-modale{background:white;border-radius:10px;padding:26px;width:400px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.3);font-family:Arial,sans-serif}'+
+      '#km-modale h3{margin:0 0 6px;color:#e67e22;font-size:15px}'+
+      '#km-modale-sub{font-size:11px;color:#888;margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:10px}'+
+      '#km-modale label{font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px}'+
+      '#km-input{padding:8px 10px;border:1px solid #ccc;border-radius:5px;font-size:16px;width:140px;box-sizing:border-box}'+
+      '#km-hint{font-size:11px;color:#999;margin-top:4px;margin-bottom:14px}'+
+      '#km-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'+
+      '#km-btns button{padding:8px 18px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold}'+
+      '#km-btn-salva{background:#e67e22;color:white}'+
+      '#km-btn-annulla{background:#bdc3c7;color:#333}';
 
     // scriptData: identico a v9.1 tranne _gruppi aggiunto,
     // apriModaleModifica e cancellaRigaTrovati aggiornati per gi
@@ -1556,6 +1568,9 @@
       'var _gruppi='+JSON.stringify(gruppiOrdine.map(function(k){ return gruppiMap[k]; }))+';'+
       'var _LS_LISTINO="'+LS_LISTINO+'";'+
       'var _LS_FUEL_PERC="'+LS_FUEL_PERC+'";'+
+      'var _LS_KM_TRATTE="tcp_km_tratte";'+
+      'var _crtRowsPopup='+JSON.stringify(_crtRows)+';'+
+      'var _addCRTPopup='+JSON.stringify(_addCRT)+';'+
       'var _idxCorrente=null;'+
       'var _chiaveCorrente=null;'+
       'var _giCorrente=null;'+
@@ -1912,6 +1927,58 @@
         'chiudiModale();'+
       '}'+
 
+      /* ── modale KM doppia localita ── */
+      'var _kmMgi=null;'+
+      'function apriModaleKm(mgi){'+
+        '_kmMgi=mgi;'+
+        'var g=_mGruppiM[mgi];'+
+        'document.getElementById("km-modale-sub").textContent=(g.indirizzi||[]).join(" \u2192 ");'+
+        'document.getElementById("km-input").value="";'+
+        'document.getElementById("km-overlay").classList.add("show");'+
+      '}'+
+      'function chiudiModaleKm(){document.getElementById("km-overlay").classList.remove("show");_kmMgi=null;}'+
+      'function salvaKm(){'+
+        'var km=parseFloat(document.getElementById("km-input").value);'+
+        'if(!km||km<=0){alert("Inserisci un valore KM valido (A/R).");return;}'+
+        'var g=_mGruppiM[_kmMgi];'+
+        'var kmTratte={};'+
+        'try{var r=localStorage.getItem(_LS_KM_TRATTE);if(r)kmTratte=JSON.parse(r);}catch(e){}'+
+        'kmTratte[g.kmKey]=km;'+
+        'try{localStorage.setItem(_LS_KM_TRATTE,JSON.stringify(kmTratte));}catch(e){}'+
+        'var porto=g.porto||"";'+
+        'var righePorto=_crtRowsPopup.filter(function(r){return(r.porto||"")===porto;});'+
+        'if(!righePorto.length)righePorto=_crtRowsPopup;'+
+        'var rigaKm=null;var diffMin=Infinity;'+
+        'righePorto.forEach(function(r){var k=parseFloat(r.km||0);if(k>0){var d=Math.abs(k-km);if(d<diffMin){diffMin=d;rigaKm=r;}}});'+
+        'if(!rigaKm){alert("Nessuna riga CRT con KM simili a "+km+".");chiudiModaleKm();return;}'+
+        'var ct=g.containerType;'+
+        'var costoBase=parseFloat(ct.isHC?(rigaKm.costo_40||0):(ct.size==="20"?(rigaKm.costo_20||0):(rigaKm.costo_40||0)));'+
+        'if(!costoBase){alert("La riga CRT trovata non ha costo per questa taglia.");chiudiModaleKm();return;}'+
+        'var fuelPerc=parseFloat(_addCRTPopup.fuel_perc||0);'+
+        'var fuelAmt=fuelPerc>0?parseFloat((costoBase*fuelPerc/100).toFixed(2)):0;'+
+        'var subtotale=parseFloat((costoBase+fuelAmt).toFixed(2));'+
+        'var addExtra=[];'+
+        'if(ct.isHC&&parseFloat(_addCRTPopup.hc||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.hc+" HC");'+
+        'if(parseFloat(_addCRTPopup.adr||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.adr+" ADR");'+
+        'if(parseFloat(_addCRTPopup.seconda_presa||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.seconda_presa+" 2\u00aa presa");'+
+        'if(parseFloat(_addCRTPopup.notte||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.notte+" sosta notte");'+
+        'if(parseFloat(_addCRTPopup.vgm||0)>0)addExtra.push("+\u20ac"+_addCRTPopup.vgm+" VGM");'+
+        'var riga1="\u20ac"+costoBase;'+
+        'if(fuelAmt>0)riga1+=" + \u20ac"+fuelAmt+" fuel ("+fuelPerc+"%) = \u20ac"+subtotale;'+
+        'var riga2=addExtra.join(" ");'+
+        'var label=km+" km A/R \u2192 "+rigaKm.localita+(rigaKm.prov?" ("+rigaKm.prov+")":"");'+
+        'var html="<span style=\"font-weight:bold;color:#8e44ad;font-size:12px\">"+riga1+"</span>"+'+
+          '(riga2?"<span style=\"color:#7f8c8d;font-size:11px\"> &nbsp;"+riga2+"</span>":"")+'+
+          '"<br><span style=\"font-size:10px;color:#2980b9;font-style:italic\">&#x1F4CC; "+label+"</span>";'+
+        'var td=document.getElementById("mcosto_"+_kmMgi);if(td)td.innerHTML=html;'+
+        'chiudiModaleKm();'+
+      '}'+
+      'document.addEventListener("click",function(e){'+
+        'if(e.target.classList.contains("btn-km")){apriModaleKm(parseInt(e.target.dataset.mgi));return;}'+
+        'if(e.target.id==="km-btn-annulla"||e.target.id==="km-overlay"){chiudiModaleKm();return;}'+
+        'if(e.target.id==="km-btn-salva"){salvaKm();return;}'+
+      '});'+
+
       /* ── export excel mancanti ── */
       'function esportaExcel(){'+
         'var hdr=[["lef","orderId","indirizzi","delivery_place","committente","traffic","containerNr","tipoContainer","porto","costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","fuel","note","data_validita"]];'+
@@ -2002,6 +2069,19 @@
         '<\/div>'+
       '<\/div>'+
 
+      '<div id="km-overlay">'+
+        '<div id="km-modale">'+
+          '<h3>&#x1F69A; Doppia localit\u00e0 &mdash; Inserisci KM<\/h3>'+
+          '<div id="km-modale-sub"><\/div>'+
+          '<label>Kilometri A/R totali<\/label>'+
+          '<input type="number" id="km-input" min="1" step="1" placeholder="es. 320">'+
+          '<div id="km-hint">KM andata e ritorno del giro completo.<br>Verr\u00e0 trovata la riga CRT con KM pi\u00f9 vicini.<\/div>'+
+          '<div id="km-btns">'+
+            '<button id="km-btn-annulla">Annulla<\/button>'+
+            '<button id="km-btn-salva">Calcola e salva<\/button>'+
+          '<\/div>'+
+        '<\/div>'+
+      '<\/div>'+
       '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'+
       '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
       '<\/body><\/html>'
