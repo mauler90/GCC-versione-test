@@ -715,7 +715,6 @@
           'html+=tfcell(r.costo_20,_fuelPerc);'+
           'html+=tcell(r.costo_40);'+
           'html+=tfcell(r.costo_40,_fuelPerc);'+
-          'html+=tcell(r.costo_hc);'+
           'html+="<td>"+'+
             '"<button class=\\"be\\" data-i=\\""+i+"\\">&#x270F;</button>"+'+
             '"<button class=\\"bd\\" data-i=\\""+i+"\\">Canc</button>"+'+
@@ -784,8 +783,8 @@
                 'var prov=String(row["Pro"]||row["Prov"]||row["prov"]||row["Pro/Prov"]||"").trim();'+
                 'var loc=String(row["Localit\u00e0"]||row["Localita"]||row["localita"]||"").trim();'+
                 'var km=parseEuro(row["DIST KM A/R"]||row["Dist KM A/R"]||row["KM"]||row["km"]||0);'+
-                'var c20=parseEuro(row["20\u0027"]||row["20"]||row["costo_20"]||0);'+
-                'var c40=parseEuro(row["40\u0027/20 HT"]||row["40\u0027"]||row["40"]||row["costo_40"]||0);'+
+                'var c20=parseEuro(row[" 20\u0027 "]||row["20\u0027"]||row["20"]||row["costo_20"]||0);'+
+                'var c40=parseEuro(row[" 40\u0027/20\u0027 HT "]||row["40\u0027/20 HT"]||row["40\u0027"]||row["40"]||row["costo_40"]||0);'+
                 'var chc=parseEuro(row["40 HC"]||row["HC"]||row["costo_hc"]||0);'+
                 'if(loc&&loc!=="0")nuove.push({porto:pc,cap:cap,prov:prov,localita:loc,km:km,costo_20:c20,costo_40:c40,costo_hc:chc});'+
               '});'+
@@ -856,9 +855,9 @@
       '<th>KM A/R</th>'+
       '<th>20\'</th><th class="fuel-hdr">20\''+fuelLabel+'</th>'+
       '<th>40\'/HT</th><th class="fuel-hdr">40\''+fuelLabel+'</th>'+
-      '<th>40 HC suppl.</th><th>Azioni</th>';
+      '<th>Azioni</th>';
 
-    var popup = window.open('', 'tcp_crt', 'width=1300,height=720,scrollbars=yes,resizable=yes');
+    var popup = window.open('', 'tcp_crt', 'width=1200,height=720,scrollbars=yes,resizable=yes');
     popup.document.write(
       '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tariffario C.R.T.<\/title>'+
       '<style>'+cssC+'<\/style><\/head><body>'+
