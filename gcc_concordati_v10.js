@@ -805,10 +805,19 @@
       +   '<div class="mbtns"><button class="btn-cancel" id="btn-annulla">Annulla<\/button><button class="btn-save" id="btn-salva">Salva<\/button><\/div>'
       + '<\/div><\/div>'
       + '<scr'+'ipt>' + scriptData + '<\/scr'+'ipt>'
-      + '<scr'+'ipt>' + scriptLogic + '<\/scr'+'ipt>'
       + '<\/body><\/html>'
     );
     popup.document.close();
+    (function(){
+      var s = popup.document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = function() {
+        var sc = popup.document.createElement('script');
+        sc.textContent = scriptLogic;
+        popup.document.body.appendChild(sc);
+      };
+      popup.document.head.appendChild(s);
+    }());
   }
 
   function apriGestioneVettori() {
@@ -1178,11 +1187,19 @@
         '<\/div>'+
       '<\/div>'+
       '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
-      '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'+
-      '<scr'+'ipt>'+scriptLogic+'<\/scr'+'ipt>'+
       '<\/body><\/html>'
     );
     popup.document.close();
+    (function(){
+      var s = popup.document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = function() {
+        var sc = popup.document.createElement('script');
+        sc.textContent = scriptLogic;
+        popup.document.body.appendChild(sc);
+      };
+      popup.document.head.appendChild(s);
+    }());
   }
 
 
@@ -2088,11 +2105,15 @@
           '<\/div>'+
         '<\/div>'+
       '<\/div>'+
-      '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'+
       '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
       '<\/body><\/html>'
     );
     popup.document.close();
+    (function(){
+      var s = popup.document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      popup.document.head.appendChild(s);
+    }());
   }
 
 })();
