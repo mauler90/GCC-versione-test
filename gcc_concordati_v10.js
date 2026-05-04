@@ -667,9 +667,10 @@
       + 'var _GF="' + GIST_FILE_BASE + '";'
       + 'var _TK="' + LS_TOKEN + '";'
       + 'var _mappaPorto={"livorno":"ITLIV","la spezia":"ITSPE","laspezia":"ITSPE","spezia":"ITSPE","genova":"ITGOA","ge":"ITGOA"};'
-      + 'var _inputXls=null;';
+      + 'var _inputXls=null;var _xlsxReady=false;';
 
     var scriptLogic = ''
+    + '(function(){var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=function(){_xlsxReady=true;};document.head.appendChild(s);}());'
     + 'function saveCRT(rows){'
     +   'try{localStorage.setItem(_LS,JSON.stringify({rows:rows,loaded_at:new Date().toISOString()}));}catch(e){}'
     +   'var tok=localStorage.getItem(_TK);if(!tok)return;'
@@ -723,6 +724,7 @@
     + '}'
     + 'function parseEuro(v){if(v===undefined||v===null)return "";var s=String(v).replace(/[\u20ac\s]/g,"").replace(",",".").trim();return isNaN(parseFloat(s))?"":s;}'
     + 'function importaExcel(){'
+    +   'if(!_xlsxReady){alert("Attendi: libreria Excel in caricamento.");return;}'
     +   'if(!_inputXls){_inputXls=document.createElement("input");_inputXls.type="file";_inputXls.accept=".xlsx,.xls";_inputXls.style.display="none";document.body.appendChild(_inputXls);'
     +     '_inputXls.addEventListener("change",function(){var f=_inputXls.files[0];if(!f)return;var reader=new FileReader();reader.onload=function(ev){try{'
     +       'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});var nuove=[];'
@@ -744,7 +746,7 @@
     +   '}'
     +   '_inputXls.value="";_inputXls.click();'
     + '}'
-    + 'function esportaExcel(){var wb=XLSX.utils.book_new();var mappa={"ITLIV":"Livorno","ITSPE":"La Spezia","ITGOA":"Genova"};Object.keys(mappa).forEach(function(pc){var rr=_rows.filter(function(r){return(r.porto||"")===pc;});if(!rr.length)return;var data=[["CAP","Pro","Localit\u00e0","DIST KM A/R","20\u0027","40\u0027/20 HT","40 HC"]];rr.forEach(function(r){data.push([r.cap||"",r.prov||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||"",r.costo_hc||""]);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),mappa[pc]);});if(!wb.SheetNames.length){alert("Nessuna tariffa.");return;}XLSX.writeFile(wb,"tariffario_crt_"+new Date().toISOString().slice(0,10)+".xlsx");}'
+    + 'function esportaExcel(){if(!_xlsxReady){alert("Attendi: libreria Excel in caricamento.");return;}var wb=XLSX.utils.book_new();var mappa={"ITLIV":"Livorno","ITSPE":"La Spezia","ITGOA":"Genova"};Object.keys(mappa).forEach(function(pc){var rr=_rows.filter(function(r){return(r.porto||"")===pc;});if(!rr.length)return;var data=[["CAP","Pro","Localit\u00e0","DIST KM A/R","20\u0027","40\u0027/20 HT","40 HC"]];rr.forEach(function(r){data.push([r.cap||"",r.prov||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||"",r.costo_hc||""]);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),mappa[pc]);});if(!wb.SheetNames.length){alert("Nessuna tariffa.");return;}XLSX.writeFile(wb,"tariffario_crt_"+new Date().toISOString().slice(0,10)+".xlsx");}'
     + 'document.addEventListener("click",function(e){'
     +   'var t=e.target;'
     +   'if(t.id==="btn-sync"){syncGist();return;}'
@@ -775,8 +777,8 @@
       +   '<h2>&#x1F4CA; Tariffario C.R.T.<\/h2>'
       +   '<div id="tabs">'
       +     '<button class="tab-btn active" data-porto="ITLIV">Livorno<\/button>'
-      +     '<button class="tab-porto" data-porto="ITSPE">La Spezia<\/button>'
-      +     '<button class="tab-porto" data-porto="ITGOA">Genova<\/button>'
+      +     '<button class="tab-btn" data-porto="ITSPE">La Spezia<\/button>'
+      +     '<button class="tab-btn" data-porto="ITGOA">Genova<\/button>'
       +   '<\/div>'
       +   '<div id="topbar-right">'
       +     '<input id="search" placeholder="\uD83D\uDD0D Filtra...">'
@@ -803,7 +805,6 @@
       +   '<div class="mbtns"><button class="btn-cancel" id="btn-annulla">Annulla<\/button><button class="btn-save" id="btn-salva">Salva<\/button><\/div>'
       + '<\/div><\/div>'
       + '<scr'+'ipt>' + scriptData + '<\/scr'+'ipt>'
-      + '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'
       + '<scr'+'ipt>' + scriptLogic + '<\/scr'+'ipt>'
       + '<\/body><\/html>'
     );
