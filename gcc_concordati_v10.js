@@ -677,7 +677,7 @@
       'var _GF="'+GIST_FILE_BASE+'";'+
       'var _TK="'+LS_TOKEN+'";';
 
-    var scriptLogic =
+    var scriptInit =
       'function saveLSCRT(rows){'+
         'try{localStorage.setItem(_LS,JSON.stringify({rows:rows,loaded_at:new Date().toISOString()}));}catch(e){}'+
         'var tok=localStorage.getItem(_TK);if(!tok)return;'+
@@ -758,7 +758,9 @@
         'if(typeof v==="number")return isNaN(v)?"":String(v);'+
         'var s=String(v).replace(/[\u20ac\u0024\s]/g,"").replace(",",".").trim();'+
         'return isNaN(parseFloat(s))?"":s;'+
-      '}'+
+      '}';
+
+    var scriptXlsx =
       'var _xlsWb=null;'+
       'var _inputXls=document.createElement("input");'+
       '_inputXls.type="file";_inputXls.accept=".xlsx,.xls";_inputXls.style.display="none";'+
@@ -923,12 +925,13 @@
         '<\/div>'+
       '<\/div>'+
       '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
+      '<scr'+'ipt>'+scriptInit+'<\/scr'+'ipt>'+
       '<scr'+'ipt>'+
         '(function(){'+
           'var s=document.createElement("script");'+
           's.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";'+
           's.onload=function(){'+
-            scriptLogic+
+            scriptXlsx+
           '};'+
           'document.head.appendChild(s);'+
         '})();'+
