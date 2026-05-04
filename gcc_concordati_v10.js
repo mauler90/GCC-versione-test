@@ -621,7 +621,14 @@
       if (raw) rows = JSON.parse(raw).rows || [];
     } catch(e) { localStorage.removeItem(LS_LISTINO_BASE); }
 
-    var rowsJson = JSON.stringify(rows);
+    var fuelPerc = 0;
+    try {
+      var rawAdd = localStorage.getItem(LS_ADDIZIONALI);
+      if (rawAdd) fuelPerc = parseFloat(JSON.parse(rawAdd).fuel_perc || 0) || 0;
+    } catch(e) {}
+
+    var rowsJson  = JSON.stringify(rows);
+    var fuelPercJ = JSON.stringify(fuelPerc);
 
     var cssC =
       'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}'+
@@ -630,16 +637,14 @@
       '#topbar-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
       '#tabs{display:flex;gap:4px;margin-right:6px}'+
       '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:180px}'+
-      '#btn-sync-crt{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:#2980b9;color:white;white-space:nowrap}'+
-      '#btn-nuova-crt{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:#27ae60;color:white;white-space:nowrap}'+
-      '#btn-carica-excel-crt{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:#e67e22;color:white;white-space:nowrap}'+
-      '#btn-export-crt{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:#16a085;color:white;white-space:nowrap}'+
+      '.tbtn{padding:7px 13px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;color:white;white-space:nowrap}'+
       '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 66px);box-sizing:border-box}'+
       'table{width:100%;border-collapse:collapse;font-size:11px}'+
       'th{background:#1a5276;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}'+
       'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}'+
       'tr:hover td{background:#f0f7ff}'+
       '.tc{color:#27ae60;font-weight:bold}'+
+      '.tf{color:#8e44ad;font-weight:bold}'+
       '.tna{color:#ddd}'+
       '#nrows{font-size:11px;color:#888;margin-top:8px}'+
       '#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}'+
@@ -659,19 +664,19 @@
       '.be{padding:3px 7px;border:none;background:#8e44ad;color:white;border-radius:3px;cursor:pointer;font-size:11px;margin-right:2px}'+
       '.bd{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}'+
       'button.tab-btn{padding:5px 12px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;background:rgba(255,255,255,.2);color:white}'+
-      'button.tab-btn.active{background:white;color:#1a5276}';
+      'button.tab-btn.active{background:white;color:#1a5276}'+
+      'th.fuel-hdr{background:#6c3483;font-size:10px}';
 
     var scriptData =
       'var _rows='+rowsJson+';'+
       'var _editIdx=null;'+
       'var _fp="ITLIV";'+
+      'var _fuelPerc='+fuelPercJ+';'+
       'var _LS="'+LS_LISTINO_BASE+'";'+
       'var _GID="'+GIST_ID+'";'+
       'var _GF="'+GIST_FILE_BASE+'";'+
       'var _TK="'+LS_TOKEN+'";';
 
-    // scriptLogic: costruito con + come da indicazioni
-    // XLSX disponibile perche eseguito dentro s.onload
     var scriptLogic =
       'function saveLSCRT(rows){'+
         'try{localStorage.setItem(_LS,JSON.stringify({rows:rows,loaded_at:new Date().toISOString()}));}catch(e){}'+
@@ -682,8 +687,15 @@
           'body:JSON.stringify({files:{[_GF]:{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})'+
         '}).catch(function(){});'+
       '}'+
+      // tcell base (verde) e tcell fuel (viola)
       'function tcell(val){'+
         'return val?"<td class=\\"tc\\">"+val+"</td>":"<td class=\\"tna\\">-</td>";'+
+      '}'+
+      'function tfcell(base,perc){'+
+        'if(!base||!perc)return"<td class=\\"tna\\">-</td>";'+
+        'var b=parseFloat(base);if(isNaN(b))return"<td class=\\"tna\\">-</td>";'+
+        'var tot=(b*(1+perc/100)).toFixed(0);'+
+        'return"<td class=\\"tf\\">\u20ac"+tot+"</td>";'+
       '}'+
       'function renderTable(){'+
         'var filter=(document.getElementById("search").value||"").toLowerCase();'+
@@ -700,7 +712,9 @@
           'html+="<td style=\\"font-weight:bold\\">"+(r.localita||"")+"</td>";'+
           'html+=tcell(r.km);'+
           'html+=tcell(r.costo_20);'+
+          'html+=tfcell(r.costo_20,_fuelPerc);'+
           'html+=tcell(r.costo_40);'+
+          'html+=tfcell(r.costo_40,_fuelPerc);'+
           'html+=tcell(r.costo_hc);'+
           'html+="<td>"+'+
             '"<button class=\\"be\\" data-i=\\""+i+"\\">&#x270F;</button>"+'+
@@ -710,7 +724,8 @@
         '});'+
         'document.getElementById("tbody").innerHTML=html;'+
         'var tot=_rows.filter(function(r){return(r.porto||"")===_fp;}).length;'+
-        'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+tot+" \u2014 Totale: "+_rows.length;'+
+        'var fuelLabel=_fuelPerc>0?" \u2014 Fuel: "+_fuelPerc+"%":"";'+
+        'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+tot+" \u2014 Totale: "+_rows.length+fuelLabel;'+
       '}'+
       'function apriFormCRT(idx){'+
         '_editIdx=idx;'+
@@ -738,9 +753,11 @@
         'if(!confirm("Cancellare questa tariffa?"))return;'+
         '_rows.splice(idx,1);saveLSCRT(_rows);renderTable();'+
       '}'+
+      // parseEuro: raw:true da XLSX restituisce numeri puri, ma gestiamo anche stringhe con €
       'function parseEuro(v){'+
-        'if(v===undefined||v===null)return"";'+
-        'var s=String(v).replace(/[\u20ac\s]/g,"").replace(",",".").trim();'+
+        'if(v===null||v===undefined)return"";'+
+        'if(typeof v==="number")return isNaN(v)?"":String(v);'+
+        'var s=String(v).replace(/[\u20ac\u0024\s]/g,"").replace(",",".").trim();'+
         'return isNaN(parseFloat(s))?"":s;'+
       '}'+
       'var _inputXls=document.createElement("input");'+
@@ -751,6 +768,7 @@
         'var reader=new FileReader();'+
         'reader.onload=function(ev){'+
           'try{'+
+            // raw:true → valori numerici puri (niente formattazione €)
             'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});'+
             'var nuove=[];'+
             'wb.SheetNames.forEach(function(sn){'+
@@ -759,16 +777,17 @@
               'else if(snl==="la spezia"||snl.indexOf("spezia")>=0)pc="ITSPE";'+
               'else if(snl==="genova"||snl.indexOf("genova")>=0)pc="ITGOA";'+
               'if(!pc)return;'+
-              'var rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:"",raw:false});'+
+              // raw:true = numeri puri, defval=0 per celle vuote
+              'var rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:0,raw:true});'+
               'rr.forEach(function(row){'+
                 'var cap=String(row["CAP"]||row["cap"]||"").trim();'+
                 'var prov=String(row["Pro"]||row["Prov"]||row["prov"]||row["Pro/Prov"]||"").trim();'+
                 'var loc=String(row["Localit\u00e0"]||row["Localita"]||row["localita"]||"").trim();'+
-                'var km=String(row["DIST KM A/R"]||row["Dist KM A/R"]||row["KM"]||row["km"]||"").trim();'+
-                'var c20=parseEuro(row["20\u0027"]||row["20"]||row["costo_20"]||"");'+
-                'var c40=parseEuro(row["40\u0027/20 HT"]||row["40\u0027"]||row["40"]||row["costo_40"]||"");'+
-                'var chc=parseEuro(row["40 HC"]||row["HC"]||row["costo_hc"]||"");'+
-                'if(loc)nuove.push({porto:pc,cap:cap,prov:prov,localita:loc,km:km,costo_20:c20,costo_40:c40,costo_hc:chc});'+
+                'var km=parseEuro(row["DIST KM A/R"]||row["Dist KM A/R"]||row["KM"]||row["km"]||0);'+
+                'var c20=parseEuro(row["20\u0027"]||row["20"]||row["costo_20"]||0);'+
+                'var c40=parseEuro(row["40\u0027/20 HT"]||row["40\u0027"]||row["40"]||row["costo_40"]||0);'+
+                'var chc=parseEuro(row["40 HC"]||row["HC"]||row["costo_hc"]||0);'+
+                'if(loc&&loc!=="0")nuove.push({porto:pc,cap:cap,prov:prov,localita:loc,km:km,costo_20:c20,costo_40:c40,costo_hc:chc});'+
               '});'+
             '});'+
             'if(!nuove.length){alert("Nessuna tariffa trovata.\\nVerifica che i fogli si chiamino Livorno, La Spezia o Genova.");return;}'+
@@ -830,11 +849,16 @@
       'document.getElementById("search").addEventListener("input",renderTable);'+
       'renderTable();';
 
+    // Intestazioni: 20' | 20'+fuel | 40'/HT | 40'+fuel | HC suppl | Azioni
+    var fuelLabel = fuelPerc > 0 ? ' (+'+fuelPerc+'% fuel)' : ' (+fuel)';
     var thH =
       '<th>#</th><th>CAP</th><th>Prov</th><th>Localit\u00e0</th>'+
-      '<th>KM A/R</th><th>20\'</th><th>40\'/HT</th><th>40 HC suppl.</th><th>Azioni</th>';
+      '<th>KM A/R</th>'+
+      '<th>20\'</th><th class="fuel-hdr">20\''+fuelLabel+'</th>'+
+      '<th>40\'/HT</th><th class="fuel-hdr">40\''+fuelLabel+'</th>'+
+      '<th>40 HC suppl.</th><th>Azioni</th>';
 
-    var popup = window.open('', 'tcp_crt', 'width=1150,height=720,scrollbars=yes,resizable=yes');
+    var popup = window.open('', 'tcp_crt', 'width=1300,height=720,scrollbars=yes,resizable=yes');
     popup.document.write(
       '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tariffario C.R.T.<\/title>'+
       '<style>'+cssC+'<\/style><\/head><body>'+
@@ -847,10 +871,10 @@
             '<button class="tab-btn" data-porto="ITGOA">Genova<\/button>'+
           '<\/div>'+
           '<input id="search" placeholder="\uD83D\uDD0D Filtra..."/>'+
-          '<button id="btn-sync-crt">Sync<\/button>'+
-          '<button id="btn-nuova-crt">+ Nuova<\/button>'+
-          '<button id="btn-carica-excel-crt">Carica Excel<\/button>'+
-          '<button id="btn-export-crt">Esporta Excel<\/button>'+
+          '<button class="tbtn" id="btn-sync-crt" style="background:#2980b9">Sync<\/button>'+
+          '<button class="tbtn" id="btn-nuova-crt" style="background:#27ae60">+ Nuova<\/button>'+
+          '<button class="tbtn" id="btn-carica-excel-crt" style="background:#e67e22">Carica Excel<\/button>'+
+          '<button class="tbtn" id="btn-export-crt" style="background:#16a085">Esporta Excel<\/button>'+
         '<\/div>'+
       '<\/div>'+
       '<div id="table-wrap">'+
@@ -882,9 +906,7 @@
           '<\/div>'+
         '<\/div>'+
       '<\/div>'+
-      // scriptData inline (variabili, no XLSX)
       '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
-      // IIFE: carica XLSX poi esegue scriptLogic nell onload
       '<scr'+'ipt>'+
         '(function(){'+
           'var s=document.createElement("script");'+
