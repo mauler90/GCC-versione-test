@@ -759,47 +759,64 @@
         'var s=String(v).replace(/[\u20ac\u0024\s]/g,"").replace(",",".").trim();'+
         'return isNaN(parseFloat(s))?"":s;'+
       '}'+
+      'var _xlsWb=null;'+
       'var _inputXls=document.createElement("input");'+
       '_inputXls.type="file";_inputXls.accept=".xlsx,.xls";_inputXls.style.display="none";'+
       'document.body.appendChild(_inputXls);'+
+      '(function(){'+
+        'var st=document.createElement("style");'+
+        'st.textContent="#col-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:19999;align-items:center;justify-content:center}#col-ov.show{display:flex}#col-box{background:white;border-radius:10px;padding:22px;width:440px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.35);font-family:Arial,sans-serif}#col-box h3{margin:0 0 12px;color:#1a5276;font-size:14px}.cr{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:6px;margin-bottom:7px}.cr label{font-size:11px;font-weight:bold;color:#555}.cr select{padding:5px 7px;border:1px solid #ccc;border-radius:4px;font-size:11px;width:100%}.cbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.cbtns button{padding:7px 16px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold}";'+
+        'document.head.appendChild(st);'+
+        'var ov=document.createElement("div");ov.id="col-ov";'+
+        'ov.innerHTML="<div id=\\"col-box\\"><h3>&#x1F4CB; Mappa colonne Excel</h3>"+"<div class=\\"cr\\"><label>CAP</label><select id=\\"cm-cap\\"></select></div>"+"<div class=\\"cr\\"><label>Provincia</label><select id=\\"cm-prov\\"></select></div>"+"<div class=\\"cr\\"><label>Localit\u00e0 *</label><select id=\\"cm-loc\\"></select></div>"+"<div class=\\"cr\\"><label>KM A/R</label><select id=\\"cm-km\\"></select></div>"+"<div class=\\"cr\\"><label>Costo 20\u0027</label><select id=\\"cm-c20\\"></select></div>"+"<div class=\\"cr\\"><label>Costo 40\u0027/HT</label><select id=\\"cm-c40\\"></select></div>"+"<div class=\\"cr\\"><label>Suppl. HC</label><select id=\\"cm-hc\\"></select></div>"+"<div class=\\"cbtns\\"><button id=\\"col-ann\\" style=\\"background:#bdc3c7;color:#333\\">Annulla</button><button id=\\"col-ok\\" style=\\"background:#27ae60;color:white\\">Importa</button></div></div>";'+
+        'document.body.appendChild(ov);'+
+        'ov.addEventListener("click",function(e){if(e.target.id==="col-ann")ov.classList.remove("show");if(e.target.id==="col-ok")eseguiImportCRT();});'+
+      '}());'+
+      'function apriMappaColonne(wb,headers){'+
+        '_xlsWb=wb;'+
+        'var none="<option value=\\"\\">(non usare)</option>";'+
+        'var opts=none+headers.map(function(h){return"<option value=\\""+h+"\\">"+h+"</option>";}).join("");'+
+        '["cm-cap","cm-prov","cm-loc","cm-km","cm-c20","cm-c40","cm-hc"].forEach(function(id){document.getElementById(id).innerHTML=opts;});'+
+        'function sel(id,kws){var el=document.getElementById(id);headers.forEach(function(h){var hl=h.toLowerCase().replace(/\\s+/g,"");if(!el.value)kws.forEach(function(k){if(hl.indexOf(k)>=0)el.value=h;});});}'+
+        'sel("cm-cap",["cap"]);sel("cm-prov",["prov","pro"]);sel("cm-loc",["localit"]);sel("cm-km",["dist","km"]);sel("cm-c20",["20"]);sel("cm-c40",["40"]);sel("cm-hc",["hc"]);'+
+        'document.getElementById("col-ov").classList.add("show");'+
+      '}'+
+      'function eseguiImportCRT(){'+
+        'var mp={cap:document.getElementById("cm-cap").value,prov:document.getElementById("cm-prov").value,loc:document.getElementById("cm-loc").value,km:document.getElementById("cm-km").value,c20:document.getElementById("cm-c20").value,c40:document.getElementById("cm-c40").value,hc:document.getElementById("cm-hc").value};'+
+        'if(!mp.loc){alert("Seleziona la colonna Localit\u00e0.");return;}'+
+        'var nuove=[];'+
+        '_xlsWb.SheetNames.forEach(function(sn){'+
+          'var pc=null;var snl=sn.toLowerCase().trim();'+
+          'if(snl==="livorno"||snl.indexOf("livorno")>=0)pc="ITLIV";'+
+          'else if(snl==="la spezia"||snl.indexOf("spezia")>=0)pc="ITSPE";'+
+          'else if(snl==="genova"||snl.indexOf("genova")>=0)pc="ITGOA";'+
+          'if(!pc)return;'+
+          'var rr=XLSX.utils.sheet_to_json(_xlsWb.Sheets[sn],{defval:0,raw:true});'+
+          'rr.forEach(function(row){'+
+            'var loc=mp.loc?String(row[mp.loc]||"").trim():"";if(!loc||loc==="0")return;'+
+            'nuove.push({porto:pc,cap:mp.cap?String(row[mp.cap]||"").trim():"",prov:mp.prov?String(row[mp.prov]||"").trim():"",localita:loc,km:mp.km?parseEuro(row[mp.km]):"",costo_20:mp.c20?parseEuro(row[mp.c20]):"",costo_40:mp.c40?parseEuro(row[mp.c40]):"",costo_hc:mp.hc?parseEuro(row[mp.hc]):""});'+
+          '});'+
+        '});'+
+        'document.getElementById("col-ov").classList.remove("show");'+
+        'if(!nuove.length){alert("Nessuna riga importata.");return;}'+
+        'if(confirm("Trovate "+nuove.length+" tariffe.\\nOK = Sostituisci\\nAnnulla = Aggiungi")){_rows=nuove;}else{_rows=_rows.concat(nuove);}'+
+        'saveLSCRT(_rows);renderTable();alert("Importate "+nuove.length+" tariffe.");'+
+      '}'+
       '_inputXls.addEventListener("change",function(){'+
         'var f=_inputXls.files[0];if(!f)return;'+
         'var reader=new FileReader();'+
         'reader.onload=function(ev){'+
           'try{'+
-            // raw:true → valori numerici puri (niente formattazione €)
-            'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});'+
-            'var nuove=[];'+
-            'wb.SheetNames.forEach(function(sn){'+
-              'var pc=null;var snl=sn.toLowerCase().trim();'+
-              'if(snl==="livorno"||snl.indexOf("livorno")>=0)pc="ITLIV";'+
-              'else if(snl==="la spezia"||snl.indexOf("spezia")>=0)pc="ITSPE";'+
-              'else if(snl==="genova"||snl.indexOf("genova")>=0)pc="ITGOA";'+
-              'if(!pc)return;'+
-              // raw:true = numeri puri, defval=0 per celle vuote
-              'var rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:0,raw:true});'+
-              'rr.forEach(function(row){'+
-                'var cap=String(row["CAP"]||row["cap"]||"").trim();'+
-                'var prov=String(row["Pro"]||row["Prov"]||row["prov"]||row["Pro/Prov"]||"").trim();'+
-                'var loc=String(row["Localit\u00e0"]||row["Localita"]||row["localita"]||"").trim();'+
-                'var km=parseEuro(row["DIST KM A/R"]||row["Dist KM A/R"]||row["KM"]||row["km"]||0);'+
-                'var c20=parseEuro(row[" 20\u0027 "]||row["20\u0027"]||row["20"]||row["costo_20"]||0);'+
-                'var c40=parseEuro(row[" 40\u0027/20\u0027 HT "]||row["40\u0027/20 HT"]||row["40\u0027"]||row["40"]||row["costo_40"]||0);'+
-                'var chc=parseEuro(row["40 HC"]||row["HC"]||row["costo_hc"]||0);'+
-                'if(loc&&loc!=="0")nuove.push({porto:pc,cap:cap,prov:prov,localita:loc,km:km,costo_20:c20,costo_40:c40,costo_hc:chc});'+
-              '});'+
-            '});'+
-            'if(!nuove.length){alert("Nessuna tariffa trovata.\\nVerifica che i fogli si chiamino Livorno, La Spezia o Genova.");return;}'+
-            'if(confirm("Trovate "+nuove.length+" tariffe.\\nOK = Sostituisci\\nAnnulla = Aggiungi")){'+
-              '_rows=nuove;'+
-            '}else{'+
-              '_rows=_rows.concat(nuove);'+
-            '}'+
-            'saveLSCRT(_rows);renderTable();alert("Importate "+nuove.length+" tariffe.");'+
+            'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array",raw:true});'+
+            'var firstRow=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:0,raw:true,header:1})[0]||[];'+
+            'var headers=firstRow.map(function(h){return String(h).trim();}).filter(function(h){return h&&h!=="0";});'+
+            'if(!headers.length){alert("Nessuna intestazione trovata.");return;}'+
+            'apriMappaColonne(wb,headers);'+
           '}catch(e){alert("Errore lettura file: "+e.message);}'+
         '};'+
         'reader.readAsArrayBuffer(f);'+
       '});'+
+      'function syncDaGistCRT(){'+
       'function syncDaGistCRT(){'+
         'var tok=localStorage.getItem(_TK);'+
         'if(!tok){alert("Token non configurato.");return;}'+
