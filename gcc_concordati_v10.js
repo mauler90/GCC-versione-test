@@ -20,6 +20,7 @@
   var LS_LISTINO_BASE = 'tcp_listino_base';
   var LS_VETTORI      = 'tcp_vettori';
   var LS_ADDIZIONALI  = 'tcp_addizionali';
+  var LS_CRT_COLS    = 'tcp_crt_cols';
 
   // ═══════════════════════════════════════════════
   //  FLOATING BUTTON
@@ -630,6 +631,18 @@
     var rowsJson  = JSON.stringify(rows);
     var fuelPercJ = JSON.stringify(fuelPerc);
 
+    // Mapping colonne configurabili
+    var defaultCols = {cap:'CAP',prov:'Prov',localita:'Localita',km:'DIST KM A/R',c20:"20'",c40:"40'/20' HT",hc:'40 HC'};
+    var savedCols = {};
+    try { var rawCols = localStorage.getItem(LS_CRT_COLS); if (rawCols) savedCols = JSON.parse(rawCols); } catch(e) {}
+    var colMap = Object.assign({}, defaultCols, savedCols);
+    var colMapJ = JSON.stringify(colMap);
+
+    // Nome file importato in precedenza
+    var importedFilename = '';
+    try { var rawB2 = localStorage.getItem(LS_LISTINO_BASE); if (rawB2) { var pb2 = JSON.parse(rawB2); importedFilename = pb2.filename || ''; } } catch(e) {}
+    var importedFilenameJ = JSON.stringify(importedFilename);
+
     var cssC =
       'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}'+
       '#topbar{display:flex;align-items:center;justify-content:space-between;background:#1a5276;color:white;padding:10px 18px;gap:8px;position:sticky;top:0;z-index:100;flex-wrap:wrap}'+
@@ -675,11 +688,14 @@
       'var _LS="'+LS_LISTINO_BASE+'";'+
       'var _GID="'+GIST_ID+'";'+
       'var _GF="'+GIST_FILE_BASE+'";'+
-      'var _TK="'+LS_TOKEN+'";';
+      'var _TK="'+LS_TOKEN+'";'+
+      'var _colMap='+colMapJ+';'+
+      'var _LS_COLS="'+LS_CRT_COLS+'";'+
+      'var _importedFilename='+importedFilenameJ+';';
 
-    var scriptInit =
-      'function saveLSCRT(rows){'+
-        'try{localStorage.setItem(_LS,JSON.stringify({rows:rows,loaded_at:new Date().toISOString()}));}catch(e){}'+
+    var scriptLogic =
+      'function saveLSCRT(rows,filename){'+
+        'var fn=filename!==undefined?filename:_importedFilename;_importedFilename=fn;'+'try{localStorage.setItem(_LS,JSON.stringify({rows:rows,filename:fn,loaded_at:new Date().toISOString()}));}catch(e){}'+
         'var tok=localStorage.getItem(_TK);if(!tok)return;'+
         'fetch("https://api.github.com/gists/"+_GID,{'+
           'method:"PATCH",'+
@@ -758,68 +774,13 @@
         'if(typeof v==="number")return isNaN(v)?"":String(v);'+
         'var s=String(v).replace(/[\u20ac\u0024\s]/g,"").replace(",",".").trim();'+
         'return isNaN(parseFloat(s))?"":s;'+
-      '}';
-
-    var scriptXlsx =
-      'var _xlsWb=null;'+
-      'var _inputXls=document.createElement("input");'+
-      '_inputXls.type="file";_inputXls.accept=".xlsx,.xls";_inputXls.style.display="none";'+
-      'document.body.appendChild(_inputXls);'+
-      '(function(){'+
-        'var st=document.createElement("style");'+
-        'st.textContent="#col-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:19999;align-items:center;justify-content:center}#col-ov.show{display:flex}#col-box{background:white;border-radius:10px;padding:22px;width:440px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.35);font-family:Arial,sans-serif}#col-box h3{margin:0 0 12px;color:#1a5276;font-size:14px}.cr{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:6px;margin-bottom:7px}.cr label{font-size:11px;font-weight:bold;color:#555}.cr select{padding:5px 7px;border:1px solid #ccc;border-radius:4px;font-size:11px;width:100%}.cbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.cbtns button{padding:7px 16px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold}";'+
-        'document.head.appendChild(st);'+
-        'var ov=document.createElement("div");ov.id="col-ov";'+
-        'ov.innerHTML="<div id=\\"col-box\\"><h3>&#x1F4CB; Mappa colonne Excel</h3>"+"<div class=\\"cr\\"><label>CAP</label><select id=\\"cm-cap\\"></select></div>"+"<div class=\\"cr\\"><label>Provincia</label><select id=\\"cm-prov\\"></select></div>"+"<div class=\\"cr\\"><label>Localit\u00e0 *</label><select id=\\"cm-loc\\"></select></div>"+"<div class=\\"cr\\"><label>KM A/R</label><select id=\\"cm-km\\"></select></div>"+"<div class=\\"cr\\"><label>Costo 20\u0027</label><select id=\\"cm-c20\\"></select></div>"+"<div class=\\"cr\\"><label>Costo 40\u0027/HT</label><select id=\\"cm-c40\\"></select></div>"+"<div class=\\"cr\\"><label>Suppl. HC</label><select id=\\"cm-hc\\"></select></div>"+"<div class=\\"cbtns\\"><button id=\\"col-ann\\" style=\\"background:#bdc3c7;color:#333\\">Annulla</button><button id=\\"col-ok\\" style=\\"background:#27ae60;color:white\\">Importa</button></div></div>";'+
-        'document.body.appendChild(ov);'+
-        'ov.addEventListener("click",function(e){if(e.target.id==="col-ann")ov.classList.remove("show");if(e.target.id==="col-ok")eseguiImportCRT();});'+
-      '}());'+
-      'function apriMappaColonne(wb,headers){'+
-        '_xlsWb=wb;'+
-        'var none="<option value=\\"\\">(non usare)</option>";'+
-        'var opts=none+headers.map(function(h){return"<option value=\\""+h+"\\">"+h+"</option>";}).join("");'+
-        '["cm-cap","cm-prov","cm-loc","cm-km","cm-c20","cm-c40","cm-hc"].forEach(function(id){document.getElementById(id).innerHTML=opts;});'+
-        'function sel(id,kws){var el=document.getElementById(id);headers.forEach(function(h){var hl=h.toLowerCase().replace(/\\s+/g,"");if(!el.value)kws.forEach(function(k){if(hl.indexOf(k)>=0)el.value=h;});});}'+
-        'sel("cm-cap",["cap"]);sel("cm-prov",["prov","pro"]);sel("cm-loc",["localit"]);sel("cm-km",["dist","km"]);sel("cm-c20",["20"]);sel("cm-c40",["40"]);sel("cm-hc",["hc"]);'+
-        'document.getElementById("col-ov").classList.add("show");'+
       '}'+
-      'function eseguiImportCRT(){'+
-        'var mp={cap:document.getElementById("cm-cap").value,prov:document.getElementById("cm-prov").value,loc:document.getElementById("cm-loc").value,km:document.getElementById("cm-km").value,c20:document.getElementById("cm-c20").value,c40:document.getElementById("cm-c40").value,hc:document.getElementById("cm-hc").value};'+
-        'if(!mp.loc){alert("Seleziona la colonna Localit\u00e0.");return;}'+
-        'var nuove=[];'+
-        '_xlsWb.SheetNames.forEach(function(sn){'+
-          'var pc=null;var snl=sn.toLowerCase().trim();'+
-          'if(snl==="livorno"||snl.indexOf("livorno")>=0)pc="ITLIV";'+
-          'else if(snl==="la spezia"||snl.indexOf("spezia")>=0)pc="ITSPE";'+
-          'else if(snl==="genova"||snl.indexOf("genova")>=0)pc="ITGOA";'+
-          'if(!pc)return;'+
-          'var rr=XLSX.utils.sheet_to_json(_xlsWb.Sheets[sn],{defval:0,raw:true});'+
-          'rr.forEach(function(row){'+
-            'var loc=mp.loc?String(row[mp.loc]||"").trim():"";if(!loc||loc==="0")return;'+
-            'nuove.push({porto:pc,cap:mp.cap?String(row[mp.cap]||"").trim():"",prov:mp.prov?String(row[mp.prov]||"").trim():"",localita:loc,km:mp.km?parseEuro(row[mp.km]):"",costo_20:mp.c20?parseEuro(row[mp.c20]):"",costo_40:mp.c40?parseEuro(row[mp.c40]):"",costo_hc:mp.hc?parseEuro(row[mp.hc]):""});'+
-          '});'+
-        '});'+
-        'document.getElementById("col-ov").classList.remove("show");'+
-        'if(!nuove.length){alert("Nessuna riga importata.");return;}'+
-        'if(confirm("Trovate "+nuove.length+" tariffe.\\nOK = Sostituisci\\nAnnulla = Aggiungi")){_rows=nuove;}else{_rows=_rows.concat(nuove);}'+
-        'saveLSCRT(_rows);renderTable();alert("Importate "+nuove.length+" tariffe.");'+
-      '}'+
-      '_inputXls.addEventListener("change",function(){'+
-        'var f=_inputXls.files[0];if(!f)return;'+
-        'var reader=new FileReader();'+
-        'reader.onload=function(ev){'+
-          'try{'+
-            'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array",raw:true});'+
-            'var firstRow=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:0,raw:true,header:1})[0]||[];'+
-            'var headers=firstRow.map(function(h){return String(h).trim();}).filter(function(h){return h&&h!=="0";});'+
-            'if(!headers.length){alert("Nessuna intestazione trovata.");return;}'+
-            'apriMappaColonne(wb,headers);'+
-          '}catch(e){alert("Errore lettura file: "+e.message);}'+
-        '};'+
-        'reader.readAsArrayBuffer(f);'+
-      '});'+
-      'function syncDaGistCRT(){'+
-      'function syncDaGistCRT(){'+
+      // Funzione configurazione colonne
+      'function mostraConfigColonne(){'+'var overlay=document.getElementById("col-overlay");'+'if(!overlay){'+'overlay=document.createElement("div");'+'overlay.id="col-overlay";'+'overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;";'+'var _flds=[{k:"cap",l:"Colonna CAP"},{k:"prov",l:"Colonna Provincia"},{k:"localita",l:"Colonna Localit\u00e0"},{k:"km",l:"Colonna KM A\/R"},{k:"c20",l:"Colonna Costo 20\u0027"},{k:"c40",l:"Colonna Costo 40\u0027\/HT"},{k:"hc",l:"Colonna HC suppl."}];'+'var rh="";_flds.forEach(function(fd){rh+="<label style=\\"display:flex;flex-direction:column;gap:3px;font-size:11px;color:#555;font-weight:bold\\">"+fd.l+"<input id=\\"col-"+fd.k+"\\" type=\\"text\\" value=\\""+(_colMap[fd.k]||"")+"\\" style=\\"padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box;\\"/></label>";});'+'overlay.innerHTML="<div style=\\"background:white;border-radius:10px;padding:24px;width:460px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.3)\\"><h3 style=\\"margin:0 0 8px;color:#1a5276;font-size:15px\\">\u2699\uFE0F Mapping colonne Excel</h3><p style=\\"font-size:11px;color:#888;margin:0 0 12px\\">Inserisci i nomi esatti delle intestazioni del file Excel. Devono corrispondere esattamente (inclusi spazi e apostrofi).</p><div style=\\"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px\\">"+rh+"</div><div style=\\"display:flex;justify-content:flex-end;gap:8px\\"><button id=\\"col-annulla\\" style=\\"padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#bdc3c7;color:#333;font-size:13px;font-weight:bold\\">Annulla</button><button id=\\"col-salva\\" style=\\"padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#27ae60;color:white;font-size:13px;font-weight:bold\\">Salva</button></div></div>";'+'document.body.appendChild(overlay);'+'overlay.addEventListener("click",function(e){'+'if(e.target.id==="col-annulla"||e.target===overlay){overlay.remove();return;}'+'if(e.target.id==="col-salva"){'+'var nm={};["cap","prov","localita","km","c20","c40","hc"].forEach(function(k){var el=document.getElementById("col-"+k);nm[k]=el?el.value.trim():"";});'+'_colMap=nm;try{localStorage.setItem(_LS_COLS,JSON.stringify(nm));}catch(e){}'+'overlay.remove();alert("Mapping colonne salvato.\nVerr\u00e0 usato nella prossima importazione.");}'+'});'+'}else{overlay.remove();}'+'}'+
+      // Input file + import con confronto colonne
+      'var _inputXls=document.createElement("input");'+'_inputXls.type="file";_inputXls.accept=".xlsx,.xls";_inputXls.style.display="none";'+'document.body.appendChild(_inputXls);'+'_inputXls.addEventListener("change",function(){'+'var f=_inputXls.files[0];if(!f)return;'+'var fname=f.name;'+'var reader=new FileReader();'+'reader.onload=function(ev){'+'try{'+'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});'+'var nuove=[];var colWarnings=[];'+'wb.SheetNames.forEach(function(sn){'+'var pc=null;var snl=sn.toLowerCase().trim();'+'if(snl==="livorno"||snl.indexOf("livorno")>=0)pc="ITLIV";'+'else if(snl==="la spezia"||snl.indexOf("spezia")>=0)pc="ITSPE";'+'else if(snl==="genova"||snl.indexOf("genova")>=0)pc="ITGOA";'+'if(!pc)return;'+'var rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:"",raw:true});'+'if(!rr.length)return;'+'var fileKeys=Object.keys(rr[0]);'+'var missing=[];'+'Object.keys(_colMap).forEach(function(k){'+'var expected=_colMap[k];'+'if(expected&&fileKeys.indexOf(expected)<0)missing.push(k+" (\u201c"+expected+"\u201d)");'+'});'+'if(missing.length)colWarnings.push("Foglio \""+sn+"\": colonne non trovate: "+missing.join(", "));'+'rr.forEach(function(row){'+'var cap=String(row[_colMap.cap]||row["CAP"]||row["cap"]||""  ).trim();'+'var prov=String(row[_colMap.prov]||row["Prov"]||row["prov"]||""  ).trim();'+'var loc=String(row[_colMap.localita]||row["Localit\u00e0"]||row["Localita"]||row["localita"]||"").trim();'+'var km=parseEuro(row[_colMap.km]||row["KM"]||row["km"]||0);'+'var c20=parseEuro(row[_colMap.c20]||row["20\u0027"]||row["costo_20"]||0);'+'var c40=parseEuro(row[_colMap.c40]||row["40\u0027"]||row["costo_40"]||0);'+'var chc=parseEuro(row[_colMap.hc]||row["HC"]||row["costo_hc"]||0);'+'if(loc&&loc!=="0"&&loc!=="")nuove.push({porto:pc,cap:cap,prov:prov,localita:loc,km:km,costo_20:c20,costo_40:c40,costo_hc:chc});'+'});'+'});'+'if(colWarnings.length){'+'var proceed=confirm("\u26A0 ATTENZIONE: alcune colonne configurate non sono state trovate nel file:\n\n"+colWarnings.join("\n")+"\n\nVerifica il mapping in \u2699 Colonne.\n\nContinuare comunque con le colonne trovate?");'+'if(!proceed)return;'+'}'+
+      'if(!nuove.length){alert("Nessuna tariffa trovata.\nVerifica:\n- I nomi colonne con \u2699 Colonne\n- I nomi fogli (Livorno, La Spezia, Genova)");return;}'+'if(confirm("Trovate "+nuove.length+" tariffe da \"" + fname + "\".\nOK = Sostituisci tutto\nAnnulla = Aggiungi a esistenti")){'+'_rows=nuove;'+'}else{'+'_rows=_rows.concat(nuove);'+'}'+'saveLSCRT(_rows,fname);renderTable();'+'var fnLabel=document.getElementById("imported-fn");if(fnLabel)fnLabel.textContent=fname;'+'alert("Importate "+nuove.length+" tariffe da \""+fname+"\".");'+'}catch(e){alert("Errore lettura file: "+e.message);}'+'};'+'reader.readAsArrayBuffer(f);'+'});'+
+            'function syncDaGistCRT(){'+
         'var tok=localStorage.getItem(_TK);'+
         'if(!tok){alert("Token non configurato.");return;}'+
         'fetch("https://api.github.com/gists/"+_GID,{'+
@@ -851,6 +812,7 @@
       'document.addEventListener("click",function(e){'+
         'if(e.target.id==="btn-nuova-crt"){apriFormCRT(-1);}'+
         'if(e.target.id==="btn-carica-excel-crt"){_inputXls.value="";_inputXls.click();}'+
+        'if(e.target.id==="btn-config-cols"){mostraConfigColonne();}'+
         'if(e.target.id==="btn-export-crt"){esportaExcelCRT();}'+
         'if(e.target.id==="btn-sync-crt"){syncDaGistCRT();}'+
         'if(e.target.classList.contains("be")){apriFormCRT(parseInt(e.target.dataset.i));}'+
@@ -892,12 +854,14 @@
           '<button class="tbtn" id="btn-sync-crt" style="background:#2980b9">Sync<\/button>'+
           '<button class="tbtn" id="btn-nuova-crt" style="background:#27ae60">+ Nuova<\/button>'+
           '<button class="tbtn" id="btn-carica-excel-crt" style="background:#e67e22">Carica Excel<\/button>'+
+          '<button class="tbtn" id="btn-config-cols" style="background:#7d6608" title="Configura mapping colonne Excel">\u2699 Colonne<\/button>'+
           '<button class="tbtn" id="btn-export-crt" style="background:#16a085">Esporta Excel<\/button>'+
         '<\/div>'+
       '<\/div>'+
       '<div id="table-wrap">'+
         '<table><thead><tr>'+thH+'<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table>'+
         '<div id="nrows"><\/div>'+
+        '<div style="font-size:10px;color:#8e44ad;margin-top:5px;padding-left:2px">&#x1F4C2; File: <span id="imported-fn">'+importedFilename+'<\/span><\/div>'+
       '<\/div>'+
       '<div id="overlay">'+
         '<div id="modale">'+
@@ -925,13 +889,12 @@
         '<\/div>'+
       '<\/div>'+
       '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
-      '<scr'+'ipt>'+scriptInit+'<\/scr'+'ipt>'+
       '<scr'+'ipt>'+
         '(function(){'+
           'var s=document.createElement("script");'+
           's.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";'+
           's.onload=function(){'+
-            scriptXlsx+
+            scriptLogic+
           '};'+
           'document.head.appendChild(s);'+
         '})();'+
