@@ -1346,7 +1346,7 @@
             '<label>Congestion (&euro;)<input type="number" id="f-congestion" placeholder="vuoto = no"><\/label>'+
             '<label>Extra Stop (&euro;)<input type="number" id="f-extra-stop" placeholder="vuoto = no"><\/label>'+
             '<label>S. Notte (&euro;)<input type="number" id="f-s-notte" placeholder="vuoto = no"><\/label>'+
-            '<label>Allaccio RF (&euro;)<input type="number" id="f-allaccio-rf" placeholder="vuoto = no"><\/label>'+
+            '<label>Reefer (%)<input type="number" id="f-allaccio-rf" min="0" step="0.1" placeholder="vuoto = no"><\/label>'+
             '<label>ADR (&euro;)<input type="number" id="f-adr" placeholder="vuoto = no"><\/label>'+
             '<label class="full">Note<input type="text" id="f-note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
@@ -1641,7 +1641,13 @@
         if(m.congestion&&m.congestion!=='')        extras.push('+'+m.congestion+'\u00a0(cong)');
         if(m.extra_stop&&m.extra_stop!=='')        extras.push('+'+m.extra_stop+'\u00a0(ex.stop)');
         if(m.s_notte&&m.s_notte!=='')              extras.push('+'+m.s_notte+'\u00a0(s.notte)');
-        if(m.allaccio_rf&&m.allaccio_rf!=='')      extras.push('+'+m.allaccio_rf+'\u00a0(all.RF)');
+        if(m.allaccio_rf&&m.allaccio_rf!=='') {
+          var _rfBase=parseFloat(costoB||0);
+          if(hasFuel&&_rfBase>0&&parseFloat(fuelPercSalvata)>0)
+            _rfBase=_rfBase*(1+parseFloat(fuelPercSalvata)/100);
+          var _rfAmt=_rfBase>0?Math.round(_rfBase*parseFloat(m.allaccio_rf)/100):0;
+          if(_rfAmt>0) extras.push('+\u20ac'+_rfAmt+'\u00a0Reefer\u00a0('+m.allaccio_rf+'%)');
+        }
         if(m.adr&&m.adr!=='')                      extras.push('+'+m.adr+'\u00a0(ADR)');
         var hasFuel=norm(m.fuel)==='si';
         gruppiMap[gKey] = {
@@ -2250,7 +2256,15 @@
         'if(edit.congestion)extras.push("+"+edit.congestion+"\u00a0(cong)");'+
         'if(edit.extra_stop)extras.push("+"+edit.extra_stop+"\u00a0(ex.stop)");'+
         'if(edit.s_notte)extras.push("+"+edit.s_notte+"\u00a0(s.notte)");'+
-        'if(edit.allaccio_rf)extras.push("+"+edit.allaccio_rf+"\u00a0(all.RF)");'+
+        'if(edit.allaccio_rf&&parseFloat(costoB)>0){'+
+        'var _rfBase=parseFloat(costoB);'+
+        'if(edit.fuel==="SI"&&_fuelOn){'+
+          'var _fp=parseFloat(document.getElementById("fuel-perc").value)||0;'+
+          'if(_fp>0)_rfBase=_rfBase*(1+_fp/100);'+
+        '}'+
+        'var _rfAmt=Math.round(_rfBase*parseFloat(edit.allaccio_rf)/100);'+
+        'if(_rfAmt>0)extras.push("+\u20ac"+_rfAmt+"\u00a0Reefer\u00a0("+edit.allaccio_rf+"%)");'+
+        '}'+
         'if(edit.adr)extras.push("+"+edit.adr+"\u00a0(ADR)");'+
         'var fuelStr="";'+
         'if(edit.fuel==="SI"&&costoB){'+
@@ -2296,7 +2310,15 @@
         'if(edit.congestion)extras.push("+"+edit.congestion+"\u00a0(cong)");'+
         'if(edit.extra_stop)extras.push("+"+edit.extra_stop+"\u00a0(ex.stop)");'+
         'if(edit.s_notte)extras.push("+"+edit.s_notte+"\u00a0(s.notte)");'+
-        'if(edit.allaccio_rf)extras.push("+"+edit.allaccio_rf+"\u00a0(all.RF)");'+
+        'if(edit.allaccio_rf&&parseFloat(costoB)>0){'+
+        'var _rfBase=parseFloat(costoB);'+
+        'if(edit.fuel==="SI"&&_fuelOn){'+
+          'var _fp=parseFloat(document.getElementById("fuel-perc").value)||0;'+
+          'if(_fp>0)_rfBase=_rfBase*(1+_fp/100);'+
+        '}'+
+        'var _rfAmt=Math.round(_rfBase*parseFloat(edit.allaccio_rf)/100);'+
+        'if(_rfAmt>0)extras.push("+\u20ac"+_rfAmt+"\u00a0Reefer\u00a0("+edit.allaccio_rf+"%)");'+
+        '}'+
         'if(edit.adr)extras.push("+"+edit.adr+"\u00a0(ADR)");'+
         'var fuelStr="";'+
         'if(edit.fuel==="SI"&&costoB){'+
@@ -2447,7 +2469,7 @@
             '<label>Congestion (&euro;)<input type="number" id="f_congestion" placeholder="vuoto = no"><\/label>'+
             '<label>Extra Stop (&euro;)<input type="number" id="f_extra_stop" placeholder="vuoto = no"><\/label>'+
             '<label>S. Notte (&euro;)<input type="number" id="f_s_notte" placeholder="vuoto = no"><\/label>'+
-            '<label>Allaccio RF (&euro;)<input type="number" id="f_allaccio_rf" placeholder="vuoto = no"><\/label>'+
+            '<label>Reefer (%)<input type="number" id="f_allaccio_rf" min="0" step="0.1" placeholder="vuoto = no"><\/label>'+
             '<label>ADR (&euro;)<input type="number" id="f_adr" placeholder="vuoto = no"><\/label>'+
             '<label class="full">Note<input type="text" id="f_note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
