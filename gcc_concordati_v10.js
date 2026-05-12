@@ -954,147 +954,123 @@
     panel.style.display = 'none';
 
     var raw = localStorage.getItem(LS_ADDIZIONALI);
-    var add = {
-      fuel_perc:'', hc:'', adr:'', seconda_presa:'',
-      notte:'', vgm:'', congestion:'', extra_stop:'',
-      allaccio_rf:'', reefer_perc:'', reefer_min:''
-    };
+    var add = { fuel_perc:'', hc:'', adr:'', vgm_liv:'', vgm_spe:'',
+      extra_stop:'', extra_stop_2:'', extra_stop_3:'', notte:'',
+      congestion_liv:'', congestion_spe:'', reefer_perc:'', reefer_min:'' };
     try {
       if (raw) {
         var p = JSON.parse(raw);
         Object.keys(add).forEach(function(k){ if (p[k] !== undefined) add[k] = p[k]; });
+        if (!add.vgm_liv && p.vgm)             add.vgm_liv = p.vgm;
+        if (!add.congestion_liv && p.congestion) add.congestion_liv = p.congestion;
       }
     } catch(e) { localStorage.removeItem(LS_ADDIZIONALI); }
+    var fp = localStorage.getItem(LS_FUEL_PERC) || '';
+    if (!add.fuel_perc && fp) add.fuel_perc = fp;
 
-    // ── Sezioni addizionali ──────────────────────────────────────
-    var sections = [
-      {
-        title: '\u26FD Fuel Surcharge',
-        color: '#e67e22',
-        fields: [
-          {key:'fuel_perc', label:'Fuel %', unit:'%', hint:'Percentuale sul costo base CRT'}
-        ]
-      },
-      {
-        title: '\u2795 Supplementi fissi',
-        color: '#2980b9',
-        fields: [
-          {key:'hc',           label:'Supplemento HC',  unit:'\u20AC', hint:'Per container High Cube'},
-          {key:'adr',          label:'ADR',             unit:'\u20AC', hint:'Merci pericolose'},
-          {key:'vgm',          label:'VGM',             unit:'\u20AC', hint:'Pesata container'},
-          {key:'seconda_presa',label:'2\xAA Presa',     unit:'\u20AC', hint:'Ritiro aggiuntivo'},
-          {key:'extra_stop',   label:'Extra Stop',      unit:'\u20AC', hint:'Fermata aggiuntiva'},
-          {key:'notte',        label:'Sosta Notte',     unit:'\u20AC', hint:'Per notte di sosta'},
-          {key:'congestion',   label:'Congestion',      unit:'\u20AC', hint:'Sovraffollamento porto'},
-          {key:'allaccio_rf',  label:'Allaccio Reefer', unit:'\u20AC', hint:'Connessione frigo al porto'}
-        ]
-      },
-      {
-        title: '\u2744 Reefer',
-        color: '#16a085',
-        fields: [
-          {key:'reefer_perc', label:'Reefer %',     unit:'%',         hint:'Percentuale sul costo base'},
-          {key:'reefer_min',  label:'Reefer minimo', unit:'\u20AC',   hint:'Importo minimo garantito'}
-        ]
-      }
-    ];
+    var css = '*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}'
+      + 'body{background:#f0f3f6;min-height:100vh}'
+      + '#topbar{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#1a5276,#2980b9);color:white;padding:10px 18px}'
+      + '#topbar h2{font-size:15px;font-weight:bold;flex:1}'
+      + '.tbtn{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;color:white}'
+      + '.content{padding:20px;max-width:700px;margin:0 auto}'
+      + '.section{background:white;border-radius:10px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}'
+      + '.sec-header{padding:10px 16px;font-size:12px;font-weight:bold;color:white}'
+      + '.sec-body{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px}'
+      + '.sec-note{padding:0 16px 12px;font-size:11px;color:#888}'
+      + 'label{display:flex;flex-direction:column;gap:4px}'
+      + '.lbl{font-size:11px;font-weight:bold;color:#555}'
+      + '.hint{font-size:10px;color:#aaa;font-weight:normal}'
+      + '.sub{font-size:10px;color:#aaa;font-style:italic;margin-top:2px}'
+      + '.input-row{display:flex;align-items:center;gap:6px}'
+      + 'input[type=number]{padding:7px 10px;border:1px solid #d0d7de;border-radius:5px;font-size:14px;width:85px;transition:border .2s}'
+      + 'input[type=number]:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.15)}'
+      + '.unit{font-size:13px;color:#888;min-width:16px}'
+      + '#status{font-size:11px;color:rgba(255,255,255,.8)}';
 
-    // ── CSS ──────────────────────────────────────────────────────
-    var css = [
-      '*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}',
-      'body{background:#f0f3f6;min-height:100vh}',
-      '#topbar{display:flex;align-items:center;justify-content:space-between;',
-        'background:linear-gradient(135deg,#1a5276,#2980b9);',
-        'color:white;padding:10px 18px;gap:10px}',
-      '#topbar h2{font-size:15px;font-weight:bold}',
-      '.tbtn{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;',
-        'font-size:12px;font-weight:bold;color:white}',
-      '.content{padding:20px;max-width:700px;margin:0 auto}',
-      '.section{background:white;border-radius:10px;margin-bottom:16px;',
-        'box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}',
-      '.sec-header{padding:10px 16px;font-size:12px;font-weight:bold;',
-        'color:white;display:flex;align-items:center;gap:8px}',
-      '.sec-body{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}',
-      'label{display:flex;flex-direction:column;gap:4px}',
-      '.lbl{font-size:11px;font-weight:bold;color:#555}',
-      '.hint{font-size:10px;color:#aaa;font-weight:normal}',
-      '.input-row{display:flex;align-items:center;gap:6px}',
-      'input[type=number]{padding:7px 10px;border:1px solid #d0d7de;border-radius:5px;',
-        'font-size:14px;width:90px;transition:border .2s}',
-      'input[type=number]:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.15)}',
-      '.unit{font-size:13px;color:#888;min-width:16px}',
-      '#status{font-size:11px;color:rgba(255,255,255,.8);margin-left:auto}'
-    ].join('');
+    function fld(key, label, unit, hint, sub) {
+      return '<label>'
+        + '<span class="lbl">' + label + (hint ? ' <span class="hint">&#8212; ' + hint + '</span>' : '') + '</span>'
+        + '<div class="input-row"><input type="number" id="add-' + key + '" min="0" step="0.01" value="' + (add[key]||'') + '" placeholder="0">'
+        + '<span class="unit">' + unit + '</span></div>'
+        + (sub ? '<span class="sub">' + sub + '</span>' : '')
+        + '</label>';
+    }
 
-    // ── HTML sezioni ─────────────────────────────────────────────
-    var sectionsHtml = '';
-    sections.forEach(function(sec) {
-      var fieldsHtml = '';
-      sec.fields.forEach(function(f) {
-        fieldsHtml += '<label>'
-          + '<span class="lbl">' + f.label + ' <span class="hint">— ' + f.hint + '</span></span>'
-          + '<div class="input-row">'
-          + '<input type="number" id="add-' + f.key + '" min="0" step="0.01" value="' + (add[f.key]||'') + '" placeholder="0">'
-          + '<span class="unit">' + f.unit + '</span>'
-          + '</div></label>';
-      });
-      sectionsHtml += '<div class="section">'
-        + '<div class="sec-header" style="background:' + sec.color + '">' + sec.title + '</div>'
-        + '<div class="sec-body">' + fieldsHtml + '</div>'
-        + '</div>';
-    });
+    var secHtml =
+      '<div class="section"><div class="sec-header" style="background:#e67e22">&#x26FD; Fuel Surcharge</div><div class="sec-body">'
+      + fld('fuel_perc','Fuel %','%','% sul costo base')
+      + '</div></div>'
 
-    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-      + '<title>Addizionali</title><style>' + css + '</style></head><body>'
-      + '<div id="topbar">'
-      + '<h2>&#x2695; Addizionali C.R.T.</h2>'
+      + '<div class="section"><div class="sec-header" style="background:#2980b9">&#x2795; Supplementi fissi</div><div class="sec-body">'
+      + fld('hc',       'Supplemento HC',  '&#8364;','Per container High Cube')
+      + fld('adr',      'ADR',             '&#8364;','Merci pericolose')
+      + fld('vgm_liv',  'VGM Livorno',     '&#8364;','Pesata container')
+      + fld('vgm_spe',  'VGM La Spezia',   '&#8364;','Pesata container')
+      + fld('notte',    'Sosta Notte',     '&#8364;','Per notte di sosta')
+      + '</div></div>'
+
+      + '<div class="section"><div class="sec-header" style="background:#8e44ad">&#x21C6; Extra Stop</div><div class="sec-body">'
+      + fld('extra_stop',  'Extra Stop 1&#176;','&#8364;','Prima fermata aggiuntiva')
+      + fld('extra_stop_2','Extra Stop 2&#176;','&#8364;','','Vuoto &#x2192; stesso del 1&#176;')
+      + fld('extra_stop_3','Extra Stop 3&#176;','&#8364;','','Vuoto &#x2192; stesso del 2&#176;')
+      + '</div></div>'
+
+      + '<div class="section"><div class="sec-header" style="background:#c0392b">&#x26A0; Congestion</div><div class="sec-body">'
+      + fld('congestion_liv','Congestion Livorno',   '&#8364;','Sovraffollamento porto')
+      + fld('congestion_spe','Congestion La Spezia', '&#8364;','Sovraffollamento porto')
+      + '</div></div>'
+
+      + '<div class="section"><div class="sec-header" style="background:#16a085">&#x2744; Reefer</div><div class="sec-body">'
+      + fld('reefer_perc','Reefer %',      '%',      '% su (base + fuel)')
+      + fld('reefer_min', 'Reefer minimo', '&#8364;','Importo minimo garantito')
+      + '</div>'
+      + '<div class="sec-note">Calcolo: <b>subtotale &#215; %</b> &#8212; se il risultato &egrave; inferiore al minimo viene usato il minimo.</div>'
+      + '</div>';
+
+    var allKeys = JSON.stringify(Object.keys(add));
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Addizionali</title><style>' + css + '</style></head><body>'
+      + '<div id="topbar"><h2>&#x2695; Addizionali C.R.T.</h2>'
       + '<span id="status"></span>'
-      + '<button class="tbtn" id="btn-salva" style="background:#27ae60">&#x1F4BE; Salva</button>'
+      + '<button class="tbtn" id="btn-salva" style="background:#27ae60;margin-left:8px">&#x1F4BE; Salva</button>'
       + '<button class="tbtn" id="btn-chiudi" style="background:#7f8c8d">Chiudi</button>'
       + '</div>'
-      + '<div class="content">'
-      + '<p style="font-size:11px;color:#888;margin-bottom:16px">Supplementi applicati sul prezzo base C.R.T. — salvati in locale e sincronizzati sul Gist.</p>'
-      + sectionsHtml
-      + '</div>'
-      + '<script>'
-      + 'var _LS=' + JSON.stringify(LS_ADDIZIONALI) + ';'
-      + 'var _GID=' + JSON.stringify(GIST_ID) + ';'
-      + 'var _GFA=' + JSON.stringify(GIST_FILE_ADD) + ';'
-      + 'var _TK=' + JSON.stringify(LS_TOKEN) + ';'
+      + '<div class="content"><p style="font-size:11px;color:#888;margin-bottom:16px">Supplementi applicati sul prezzo base C.R.T. &#8212; sincronizzati sul Gist.</p>'
+      + secHtml + '</div>'
+      + '<scr' + 'ipt>'
+      + 'var _LS=' + "tcp_addizionali" + ';'
+      + 'var _LS_FP=' + "tcp_fuel_perc" + ';'
+      + 'var _GID=' + '+GIST_ID+' + ';'
+      + 'var _GFA=' + "tcp_addizionali.json" + ';'
+      + 'var _TK=' + "tcp_gcc_token" + ';'
+      + 'var _keys=' + allKeys + ';'
       + 'document.getElementById("btn-chiudi").onclick=function(){window.close();};'
       + 'document.getElementById("btn-salva").onclick=function(){'
-      + '  var keys=["fuel_perc","hc","adr","seconda_presa","notte","vgm","congestion","extra_stop","allaccio_rf","reefer_perc","reefer_min"];'
-      + '  var nuovi={};'
-      + '  keys.forEach(function(k){var el=document.getElementById("add-"+k);nuovi[k]=el?el.value.trim():"";});'
-      + '  try{localStorage.setItem(_LS,JSON.stringify(nuovi));}catch(e){}'
-      + '  var status=document.getElementById("status");'
-      + '  var tok=localStorage.getItem(_TK);'
-      + '  if(tok){'
-      + '    status.textContent="\u23F3 Salvataggio Gist...";'
-      + '    fetch("https://api.github.com/gists/"+_GID,{'
-      + '      method:"PATCH",'
-      + '      headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},'
-      + '      body:JSON.stringify({files:{[_GFA]:{content:JSON.stringify(nuovi,null,2)}}})'
-      + '    }).then(function(r){'
-      + '      status.textContent=r.ok?"\u2705 Salvato sul Gist":"\u26A0 Gist: errore HTTP "+r.status;'
-      + '    }).catch(function(e){status.textContent="\u26A0 "+e.message;});'
-      + '  } else {'
-      + '    status.textContent="\u2705 Salvato in locale (no token)";'
-      + '  }'
-      + '  if(window.opener&&window.opener._gccOnAddSaved)window.opener._gccOnAddSaved(nuovi);'
+      + 'var n={};_keys.forEach(function(k){var e=document.getElementById("add-"+k);n[k]=e?e.value.trim():"";});'
+      + 'try{localStorage.setItem(_LS,JSON.stringify(n));}catch(e){}'
+      + 'if(n.fuel_perc)try{localStorage.setItem(_LS_FP,n.fuel_perc);}catch(e){}'
+      + 'if(window.opener&&window.opener._gccOnAddSaved)try{window.opener._gccOnAddSaved(n);}catch(e){}'
+      + 'var st=document.getElementById("status"),tok=localStorage.getItem(_TK);'
+      + 'if(tok){st.textContent="\u23F3 Salvataggio Gist...";'
+      + 'fetch("https://api.github.com/gists/"+_GID,{method:"PATCH",'
+      + 'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},'
+      + 'body:JSON.stringify({files:{[_GFA]:{content:JSON.stringify(n,null,2)}}})})'
+      + '.then(function(r){st.textContent=r.ok?"\u2705 Salvato sul Gist":"\u26A0 Errore "+r.status;})'
+      + '.catch(function(e){st.textContent="\u26A0 "+e.message;});'
+      + '}else{st.textContent="\u2705 Salvato in locale";}'
       + '};'
-      + '<\/script>'
-      + '</body></html>';
+      + '<\/scr' + 'ipt></body></html>';
 
     var blob = new Blob([html], {type:'text/html;charset=utf-8'});
     var url  = URL.createObjectURL(blob);
-    var win  = window.open('', 'tcp_addizionali', 'width=680,height=620,scrollbars=yes,resizable=yes');
+    var win  = window.open('', 'tcp_addizionali', 'width=700,height=700,scrollbars=yes,resizable=yes');
     win.location.replace(url);
     setTimeout(function(){ URL.revokeObjectURL(url); }, 8000);
 
-    // Callback: aggiorna localStorage del parent quando popup salva
     window._gccOnAddSaved = function(nuovi) {
       try { localStorage.setItem(LS_ADDIZIONALI, JSON.stringify(nuovi)); } catch(e) {}
+      if (nuovi.fuel_perc) try { localStorage.setItem(LS_FUEL_PERC, nuovi.fuel_perc); } catch(e) {}
     };
   }
 
@@ -1562,35 +1538,55 @@
   //   subtotale = costoBase + fuelAmt  (€280 + €42 fuel 15% = €322)
   //   addExtra  = addizionali separati (+ €30 HC + €50 ADR ...)
   function calcolaCRT(rigaCRT, containerType, addizionali) {
-    var ct = containerType;
+    var ct    = containerType;
+    var porto = (rigaCRT && rigaCRT.porto) || '';
     var costoBase = parseFloat(ct.isHC ? (rigaCRT.costo_40 || 0) : (ct.size === '20' ? (rigaCRT.costo_20 || 0) : (rigaCRT.costo_40 || 0)));
     if (isNaN(costoBase) || costoBase === 0) return null;
 
-    var add      = addizionali || {};
-    var fuelPerc = parseFloat(add.fuel_perc || 0);
-    var fuelAmt  = fuelPerc > 0 ? parseFloat((costoBase * fuelPerc / 100).toFixed(2)) : 0;
+    var add       = addizionali || {};
+    var fuelPerc  = parseFloat(add.fuel_perc || 0);
+    var fuelAmt   = fuelPerc > 0 ? parseFloat((costoBase * fuelPerc / 100).toFixed(2)) : 0;
     var subtotale = parseFloat((costoBase + fuelAmt).toFixed(2));
 
-    // Addizionali scorporati dal subtotale
     var addExtra = [];
+
+    // HC
     if (ct.isHC && parseFloat(add.hc || 0) > 0)
       addExtra.push({ label: 'HC', amt: parseFloat(add.hc) });
+
+    // ADR
     if (parseFloat(add.adr || 0) > 0)
       addExtra.push({ label: 'ADR', amt: parseFloat(add.adr) });
-    if (parseFloat(add.seconda_presa || 0) > 0)
-      addExtra.push({ label: '2\u00aa presa', amt: parseFloat(add.seconda_presa) });
-    if (parseFloat(add.notte || 0) > 0)
-      addExtra.push({ label: 'sosta notte', amt: parseFloat(add.notte) });
-    if (parseFloat(add.vgm || 0) > 0)
-      addExtra.push({ label: 'VGM', amt: parseFloat(add.vgm) });
 
-    return {
-      costoBase: costoBase,
-      fuelAmt:   fuelAmt,
-      fuelPerc:  fuelPerc,
-      subtotale: subtotale,
-      addExtra:  addExtra
-    };
+    // VGM per porto
+    var vgmKey = porto === 'ITSPE' ? 'vgm_spe' : 'vgm_liv';
+    var vgmAmt = parseFloat(add[vgmKey] || add.vgm || 0);
+    if (vgmAmt > 0) addExtra.push({ label: 'VGM', amt: vgmAmt });
+
+    // Extra Stop 1° (2° e 3° agganciati in futuro con nr_extra_stop)
+    var es1 = parseFloat(add.extra_stop || 0);
+    if (es1 > 0) addExtra.push({ label: 'Extra Stop', amt: es1 });
+
+    // Sosta Notte
+    if (parseFloat(add.notte || 0) > 0)
+      addExtra.push({ label: 'Sosta Notte', amt: parseFloat(add.notte) });
+
+    // Congestion per porto
+    var congKey = porto === 'ITSPE' ? 'congestion_spe' : 'congestion_liv';
+    var congAmt = parseFloat(add[congKey] || add.congestion || 0);
+    if (congAmt > 0) addExtra.push({ label: 'Congestion', amt: congAmt });
+
+    // Reefer: su subtotale (base + fuel), mostra max(calcolato, minimo)
+    var reeferPerc = parseFloat(add.reefer_perc || 0);
+    var reeferMin  = parseFloat(add.reefer_min  || 0);
+    if (reeferPerc > 0) {
+      var reeferCalc = parseFloat((subtotale * reeferPerc / 100).toFixed(2));
+      var reeferAmt  = reeferMin > 0 ? Math.max(reeferCalc, reeferMin) : reeferCalc;
+      if (reeferAmt > 0)
+        addExtra.push({ label: 'Reefer ' + reeferPerc + '%' + (reeferAmt === reeferMin ? ' (min)' : ''), amt: reeferAmt });
+    }
+
+    return { costoBase: costoBase, fuelAmt: fuelAmt, fuelPerc: fuelPerc, subtotale: subtotale, addExtra: addExtra };
   }
 
   // ═══════════════════════════════════════════════
