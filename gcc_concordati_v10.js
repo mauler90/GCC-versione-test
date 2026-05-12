@@ -18,10 +18,10 @@
   var GIST_FILE_BASE = 'tcp_listino_base.json';
   var GIST_FILE_CRT_LIV = 'tcp_crt_livorno.json';
   var GIST_FILE_CRT_SPE = 'tcp_crt_laspezia.json';
-  var GIST_FILE_ADD  = 'tcp_addizionali.json';
+  var GIST_FILE_ADD  = 'tcp_gcc_addizionali.json';
   var LS_LISTINO_BASE = 'tcp_listino_base';
   var LS_VETTORI      = 'tcp_vettori';
-  var LS_ADDIZIONALI  = 'tcp_addizionali';
+  var LS_ADDIZIONALI  = 'tcp_gcc_addizionali';
   var LS_CRT_COLS    = 'tcp_crt_cols';
 
   // ═══════════════════════════════════════════════
@@ -957,6 +957,13 @@
   function apriAddizionali() {
     panel.style.display = 'none';
 
+    // Migrazione automatica da vecchia chiave tcp_addizionali
+    if (!localStorage.getItem(LS_ADDIZIONALI) && localStorage.getItem('tcp_addizionali')) {
+      try {
+        localStorage.setItem(LS_ADDIZIONALI, localStorage.getItem('tcp_addizionali'));
+        localStorage.removeItem('tcp_addizionali');
+      } catch(e) {}
+    }
     var raw = localStorage.getItem(LS_ADDIZIONALI);
     var add = { fuel_perc:'', hc:'', adr:'', vgm_liv:'', vgm_spe:'',
       extra_stop:'', extra_stop_2:'', extra_stop_3:'', extra_stop_4:'', notte:'',
@@ -1069,7 +1076,7 @@
 
     var blob = new Blob([html], {type:'text/html;charset=utf-8'});
     var url  = URL.createObjectURL(blob);
-    var win  = window.open('', 'tcp_addizionali', 'width=700,height=700,scrollbars=yes,resizable=yes');
+    var win  = window.open('', 'tcp_gcc_addizionali', 'width=700,height=700,scrollbars=yes,resizable=yes');
     win.location.replace(url);
     setTimeout(function(){ URL.revokeObjectURL(url); }, 8000);
 
