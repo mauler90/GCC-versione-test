@@ -955,7 +955,7 @@
 
     var raw = localStorage.getItem(LS_ADDIZIONALI);
     var add = { fuel_perc:'', hc:'', adr:'', vgm_liv:'', vgm_spe:'',
-      extra_stop:'', extra_stop_2:'', extra_stop_3:'', notte:'',
+      extra_stop:'', extra_stop_2:'', extra_stop_3:'', extra_stop_4:'', notte:'',
       congestion_liv:'', congestion_spe:'', reefer_perc:'', reefer_min:'' };
     try {
       if (raw) {
@@ -1014,6 +1014,7 @@
       + fld('extra_stop',  'Extra Stop 1&#176;','&#8364;','Prima fermata aggiuntiva')
       + fld('extra_stop_2','Extra Stop 2&#176;','&#8364;','','Vuoto &#x2192; stesso del 1&#176;')
       + fld('extra_stop_3','Extra Stop 3&#176;','&#8364;','','Vuoto &#x2192; stesso del 2&#176;')
+      + fld('extra_stop_4','Extra Stop 4&#176;','&#8364;','','Vuoto &#x2192; stesso del 3&#176;')
       + '</div></div>'
 
       + '<div class="section"><div class="sec-header" style="background:#c0392b">&#x26A0; Congestion</div><div class="sec-body">'
@@ -1039,11 +1040,11 @@
       + '<div class="content"><p style="font-size:11px;color:#888;margin-bottom:16px">Supplementi applicati sul prezzo base C.R.T. &#8212; sincronizzati sul Gist.</p>'
       + secHtml + '</div>'
       + '<scr' + 'ipt>'
-      + 'var _LS=' + "tcp_addizionali" + ';'
-      + 'var _LS_FP=' + "tcp_fuel_perc" + ';'
-      + 'var _GID=' + '+GIST_ID+' + ';'
-      + 'var _GFA=' + "tcp_addizionali.json" + ';'
-      + 'var _TK=' + "tcp_gcc_token" + ';'
+      + 'var _LS="' + LS_ADDIZIONALI + '";'
+      + 'var _LS_FP="' + LS_FUEL_PERC + '";'
+      + 'var _GID="' + GIST_ID + '";'
+      + 'var _GFA="' + GIST_FILE_ADD + '";'
+      + 'var _TK="' + LS_TOKEN + '";'
       + 'var _keys=' + allKeys + ';'
       + 'document.getElementById("btn-chiudi").onclick=function(){window.close();};'
       + 'document.getElementById("btn-salva").onclick=function(){'
