@@ -1348,6 +1348,31 @@
   // Cerca nel tariffario CRT la riga che corrisponde all'indirizzo
   // Strategia: 1) Località (+ conferma Prov se disponibile), 2) CAP esatto
   // Restituisce { riga, metodo } o null
+  // Formatta indirizzo con provincia e CAP per la visualizzazione
+  function formatIndirizzoDisplay(parsed, fallback) {
+    if (!parsed) return fallback || '';
+    var s = parsed.loc || fallback || '';
+    if (parsed.prov) s += ' (' + parsed.prov + ')';
+    if (parsed.cap)  s += ' ' + parsed.cap;
+    return s;
+  }
+
+  // Restituisce true se la località è intermedia/escludibile dal tariffario CRT
+  // (porto, interporto, svincoli autostradali, terminal, ecc.)
+  function isLocalitaIntermedia(loc) {
+    if (!loc) return false;
+    var l = loc.toUpperCase();
+    // Svincoli autostradali: contiene codice A+numero (A1, A10, A11, A12, A13, ecc.)
+    if (/\bA\d{1,2}\b/.test(l)) return true;
+    // Interporto (hub logistico) — ma NON "Porto Mantovano" o comuni con "Porto"
+    if (/\bINTERPORTO\b/.test(l)) return true;
+    // "Porto di X" o "Porto X" dove X è un nome di porto (non un comune)
+    if (/\bPORTO\s+DI\b/.test(l)) return true;
+    // Terminal, Gate, Darsena, Svincolo
+    if (/\b(TERMINAL|GATE|DARSENA|SVINCOLO|AREA\s+PORTUALE|ZONA\s+PORTUALE)\b/.test(l)) return true;
+    return false;
+  }
+
   function cercaCRT(indirizzo, porto, crtRows) {
     if (!crtRows || crtRows.length === 0) return null;
     // Accetta sia oggetto {loc,prov,cap} che stringa raw
@@ -1357,8 +1382,13 @@
     } else {
       det = parseIndirizzoDettaglio(indirizzo || '');
     }
-    var righePorto = crtRows.filter(function(r) { return (r.porto || '') === porto; });
-    if (righePorto.length === 0) righePorto = crtRows;
+    var righePorto = crtRows.filter(function(r) {
+      return (r.porto || '') === porto && !isLocalitaIntermedia(r.localita);
+    });
+    if (righePorto.length === 0) {
+      // Fallback: tutti i porti ma ancora escludi intermedie
+      righePorto = crtRows.filter(function(r) { return !isLocalitaIntermedia(r.localita); });
+    }
 
     function lbl(r) { return r.localita + (r.cap ? ' ' + r.cap : '') + (r.prov ? ' (' + r.prov + ')' : ''); }
     function ret(r, m) { return { riga: r, metodo: m, label: lbl(r) }; }
@@ -1649,7 +1679,7 @@
           '<\/button>'+
         '</td>'+
         '<td><span style="display:inline-block;background:#eaf0fb;color:#1a5276;font-weight:bold;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap;">'+g.equip+'<\/span><\/td>'+
-        '<td>'+g.indirizzi.join(' \u2192 ')+'</td>'+
+        '<td>'+(g.indirizziParsed&&g.indirizziParsed.length?g.indirizziParsed.map(function(p,i){return formatIndirizzoDisplay(p,g.indirizzi[i]);}).join(' \u2192 '):g.indirizzi.join(' \u2192 '))+'</td>'+
         '<td>'+g.delivery_place+'</td>'+
         '<td>'+g.committente+'</td>'+
         '<td>'+g.traffic+'</td>'+
@@ -1709,7 +1739,7 @@
         '<td><span style="display:inline-block;background:#fde8e8;color:#c0392b;'+
           'font-weight:bold;font-size:11px;padding:2px 8px;border-radius:4px">'+
           g.equip+'</span></td>'+
-        '<td>'+g.indirizzi.join(' \u2192 ')+'</td>'+
+        '<td>'+(g.indirizziParsed&&g.indirizziParsed.length?g.indirizziParsed.map(function(p,i){return formatIndirizzoDisplay(p,g.indirizzi[i]);}).join(' \u2192 '):g.indirizzi.join(' \u2192 '))+'</td>'+
         '<td>'+g.delivery_place+'</td>'+
         '<td>'+g.committente+'</td>'+
         '<td>'+g.traffic+'</td>'+
