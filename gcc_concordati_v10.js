@@ -667,6 +667,7 @@
           orderId:ordine.orderId, lef:ordine.lef,
           delivery_place:ordine.delivery_place, committente:ordine.committente,
           traffic:ordine.traffic, indirizzi:ordine.indirizzi,
+          indirizziParsed:ordine.indirizziParsed,
           containerNr:container.containerNr, containerTypeRaw:container.containerTypeRaw,
           containerType:container.containerType, portLoading:container.portLoading,
           portDischarge:container.portDischarge, porto:container.porto, deliveryDT:container.deliveryDT,
@@ -1679,7 +1680,7 @@
           '<\/button>'+
         '</td>'+
         '<td><span style="display:inline-block;background:#eaf0fb;color:#1a5276;font-weight:bold;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap;">'+g.equip+'<\/span><\/td>'+
-        '<td>'+(g.indirizziParsed&&g.indirizziParsed.length?g.indirizziParsed.map(function(p,i){return formatIndirizzoDisplay(p,g.indirizzi[i]);}).join(' \u2192 '):g.indirizzi.join(' \u2192 '))+'</td>'+
+        '<td style="line-height:1.4">'+(g.indirizziParsed&&g.indirizziParsed.length&&g.indirizziParsed[0]&&g.indirizziParsed[0].loc?g.indirizziParsed.map(function(p,i,arr){var loc=(p&&p.loc)||'';var prov=(p&&p.prov)?'<span style="color:#555"> ('+p.prov+')</span>':'';var cap=(p&&p.cap)?'<br><span style="font-size:10px;color:#aaa;letter-spacing:.5px">'+p.cap+'</span>':'';var sep=i<arr.length-1?'<span style="color:#bbb;margin:0 4px">&#x2192;</span>':'';return (loc?loc+prov+cap:'')+sep;}).join(''):g.indirizzi.join(' \u2192 '))+'</td>'+
         '<td>'+g.delivery_place+'</td>'+
         '<td>'+g.committente+'</td>'+
         '<td>'+g.traffic+'</td>'+
@@ -1739,7 +1740,7 @@
         '<td><span style="display:inline-block;background:#fde8e8;color:#c0392b;'+
           'font-weight:bold;font-size:11px;padding:2px 8px;border-radius:4px">'+
           g.equip+'</span></td>'+
-        '<td>'+(g.indirizziParsed&&g.indirizziParsed.length?g.indirizziParsed.map(function(p,i){return formatIndirizzoDisplay(p,g.indirizzi[i]);}).join(' \u2192 '):g.indirizzi.join(' \u2192 '))+'</td>'+
+        '<td style="line-height:1.4">'+(g.indirizziParsed&&g.indirizziParsed.length&&g.indirizziParsed[0]&&g.indirizziParsed[0].loc?g.indirizziParsed.map(function(p,i,arr){var loc=(p&&p.loc)||'';var prov=(p&&p.prov)?'<span style="color:#555"> ('+p.prov+')</span>':'';var cap=(p&&p.cap)?'<br><span style="font-size:10px;color:#aaa;letter-spacing:.5px">'+p.cap+'</span>':'';var sep=i<arr.length-1?'<span style="color:#bbb;margin:0 4px">&#x2192;</span>':'';return (loc?loc+prov+cap:'')+sep;}).join(''):g.indirizzi.join(' \u2192 '))+'</td>'+
         '<td>'+g.delivery_place+'</td>'+
         '<td>'+g.committente+'</td>'+
         '<td>'+g.traffic+'</td>'+
