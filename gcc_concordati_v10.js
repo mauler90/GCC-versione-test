@@ -593,8 +593,12 @@
           });
         }
       }
+      // ADR: icona sdb-icon-cabinet_warning presente nella riga o nella sub-riga
+      var isADR = !!(riga.querySelector('.sdb-icon-cabinet_warning') ||
+                     (nextRow && nextRow.querySelector('.sdb-icon-cabinet_warning')));
       ordini.push({ orderId:orderId, lef:lef, committente:committente, traffic:traffic,
-        delivery_place:delivery_place, indirizzi:indirizzi, indirizziParsed:indirizziParsed, containers:containers });
+        delivery_place:delivery_place, indirizzi:indirizzi, indirizziParsed:indirizziParsed,
+        isADR:isADR, containers:containers });
     });
     return ordini;
   }
@@ -667,7 +671,7 @@
           orderId:ordine.orderId, lef:ordine.lef,
           delivery_place:ordine.delivery_place, committente:ordine.committente,
           traffic:ordine.traffic, indirizzi:ordine.indirizzi,
-          indirizziParsed:ordine.indirizziParsed,
+          indirizziParsed:ordine.indirizziParsed, isADR:ordine.isADR||false,
           containerNr:container.containerNr, containerTypeRaw:container.containerTypeRaw,
           containerType:container.containerType, portLoading:container.portLoading,
           portDischarge:container.portDischarge, porto:container.porto, deliveryDT:container.deliveryDT,
@@ -1536,7 +1540,7 @@
 
   // Calcola il costo CRT — mostra solo addizionali certi dall'ordine
   // nExtraStops = nr fermate aggiuntive oltre la prima (derivato dagli indirizzi)
-  function calcolaCRT(rigaCRT, containerType, addizionali, nExtraStops) {
+  function calcolaCRT(rigaCRT, containerType, addizionali, nExtraStops, isADR, kmBase) {
     var ct    = containerType;
     var porto = (rigaCRT && rigaCRT.porto) || '';
     var costoBase = parseFloat(ct.isHC ? (rigaCRT.costo_40 || 0) : (ct.size === '20' ? (rigaCRT.costo_20 || 0) : (rigaCRT.costo_40 || 0)));
@@ -1558,6 +1562,15 @@
     var congKey = porto === 'ITSPE' ? 'congestion_spe' : 'congestion_liv';
     var congAmt = Math.round(parseFloat(add[congKey] || add.congestion || 0));
     if (congAmt > 0) addExtra.push({ label: 'Congestion', amt: congAmt });
+
+    // ADR — se segnalato sull'ordine TMS
+    if (isADR && parseFloat(add.adr || 0) > 0)
+      addExtra.push({ label: 'ADR', amt: Math.round(parseFloat(add.adr)) });
+
+    // Sosta Notte — automatica se km >= 750
+    var kmVal = parseFloat(kmBase || rigaCRT.km || 0);
+    if (kmVal >= 750 && parseFloat(add.notte || 0) > 0)
+      addExtra.push({ label: 'Sosta Notte', amt: Math.round(parseFloat(add.notte)) });
 
     // Extra Stop — uno per ogni fermata aggiuntiva oltre la prima
     var nStops = parseInt(nExtraStops || 0);
@@ -1626,7 +1639,7 @@
         var hasFuel=norm(m.fuel)==='si';
         gruppiMap[gKey] = {
           gKey:gKey, chiave:chiave,
-          indirizzi:r.indirizzi, indirizziParsed:r.indirizziParsed, delivery_place:r.delivery_place,
+          indirizzi:r.indirizzi, indirizziParsed:r.indirizziParsed, isADR:r.isADR||false, delivery_place:r.delivery_place,
           committente:r.committente, traffic:r.traffic, porto:r.porto,
           costoB:costoB, extras:extras, hasFuel:hasFuel,
           equip:equipLabel(ct),
@@ -1660,7 +1673,7 @@
                     norm(r.traffic),norm(r.committente),eqKey].join('||');
         if (!mappa[mKey]) {
           mappa[mKey] = { mKey:mKey, equip:equipLabel(ct), containerType:ct,
-            indirizzi:r.indirizzi, indirizziParsed:r.indirizziParsed, delivery_place:r.delivery_place,
+            indirizzi:r.indirizzi, indirizziParsed:r.indirizziParsed, isADR:r.isADR||false, delivery_place:r.delivery_place,
             committente:r.committente, traffic:r.traffic, porto:r.porto,
             containers:[] };
           mGruppiM.push(mappa[mKey]);
@@ -1710,7 +1723,7 @@
             }
           });
           if (rigaKm) {
-            var calc = calcolaCRT(rigaKm, g.containerType, _addCRT, Math.max(0, indirizzi.length - 1));
+            var calc = calcolaCRT(rigaKm, g.containerType, _addCRT, Math.max(0, indirizzi.length - 1), g.isADR, parseFloat(rigaKm.km||0));
             if (calc) {
               g.crtMatch = { riga: rigaKm, metodo: 'km', label: kmSalvati + ' km A/R → ' + rigaKm.localita };
               g.crtCalc  = calc;
@@ -1727,7 +1740,7 @@
         var parsed0 = (g.indirizziParsed && g.indirizziParsed[0]) || null;
         var match = cercaCRT(parsed0 || indirizzi[0] || '', porto, _crtRows);
         if (match) {
-          var calc = calcolaCRT(match.riga, g.containerType, _addCRT, 0);
+          var calc = calcolaCRT(match.riga, g.containerType, _addCRT, 0, g.isADR, parseFloat(match.riga.km||0));
           if (calc) {
             g.crtMatch = match;
             g.crtCalc  = calc;
