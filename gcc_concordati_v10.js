@@ -82,10 +82,14 @@
 
   // ── CRT in-memory cache ──────────────────────────────────
   var _gcc_crt_rows = [];   // unica fonte runtime, niente localStorage
+  var _gcc_crt_loading = false;  // true durante il fetch Gist
+  var _gcc_crt_callbacks = [];   // funzioni da eseguire quando CRT è pronto
 
   function _initCrtData() {
     var tok = localStorage.getItem(LS_TOKEN);
     if (!tok) return;
+    _gcc_crt_loading = true;
+    try { aggiornaStato(); } catch(e) {}
     fetch('https://api.github.com/gists/' + GIST_ID, {
       headers: { 'Authorization': 'token ' + tok, 'Accept': 'application/vnd.github.v3+json' }
     })
@@ -96,10 +100,14 @@
       try { if (gd.files[GIST_FILE_CRT_LIV]) liv = JSON.parse(gd.files[GIST_FILE_CRT_LIV].content).rows || []; } catch(e) {}
       try { if (gd.files[GIST_FILE_CRT_SPE]) spe = JSON.parse(gd.files[GIST_FILE_CRT_SPE].content).rows || []; } catch(e) {}
       _gcc_crt_rows = liv.concat(spe);
+      _gcc_crt_loading = false;
       console.log('[GCC] CRT caricato dal Gist: LIV=' + liv.length + ' SPE=' + spe.length);
       try { aggiornaStato(); } catch(e) {}
+      // Esegui i callback in attesa (es. concordati che aspettava CRT)
+      var cbs = _gcc_crt_callbacks.splice(0);
+      cbs.forEach(function(cb){ try{cb();}catch(e){} });
     })
-    .catch(function() {});
+    .catch(function() { _gcc_crt_loading = false; });
   }
 
   function aggiornaStato() {
@@ -107,12 +115,16 @@
     var info = null;
     try { if (raw) info = JSON.parse(raw); } catch(e) { localStorage.removeItem(LS_LISTINO); }
     var infoBase = _gcc_crt_rows.length ? {rows: {length: _gcc_crt_rows.length}} : null;
+    var crtStatus = _gcc_crt_loading
+      ? '<span style="color:#e67e22"> &mdash; &#x23F3; CRT caricamento...</span>'
+      : (_gcc_crt_rows.length
+          ? '<span style="color:#8e44ad"> &mdash; &#x1F4CA; '+_gcc_crt_rows.length+' tariffe CRT &#x2713;</span>'
+          : '<span style="color:#c0392b"> &mdash; &#x26A0; CRT non caricato</span>');
     var token = localStorage.getItem(LS_TOKEN);
     var html = (info && info.rows)
       ? '<span style="color:green">&#x2705; '+(info.rows.length)+' concordati</span>'
       : '<span style="color:#c0392b">&#x274C; Nessun listino</span>';
-    if (infoBase && infoBase.rows)
-      html += ' &mdash; <span style="color:#8e44ad">&#x1F4CA; '+(infoBase.rows.length)+' tariffe base</span>';
+    html += crtStatus;
     html += token
       ? '<span style="color:green"> &mdash; &#x1F511; Token OK</span>'
       : '<span style="color:#e67e22"> &mdash; &#x26A0; Token mancante</span>';
@@ -561,6 +573,20 @@
   // ═══════════════════════════════════════════════
 
   function eseguiMatch(){
+    // Se CRT è ancora in caricamento, aspetta e riprova
+    if (_gcc_crt_loading) {
+      var loadMsg = document.createElement('div');
+      loadMsg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);'
+        + 'background:#1a5276;color:white;padding:12px 24px;border-radius:8px;'
+        + 'font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+      loadMsg.textContent = '⏳ Attendi... tariffe CRT in caricamento dal Gist';
+      document.body.appendChild(loadMsg);
+      _gcc_crt_callbacks.push(function() {
+        loadMsg.remove();
+        eseguiMatch(); // riprova quando CRT è pronto
+      });
+      return;
+    }
     var token = localStorage.getItem(LS_TOKEN);
     if (token) {
       sincronizza(function() { _eseguiMatchCore(); });
@@ -669,7 +695,11 @@
   // Setter esposto su window — il popup lo usa per aggiornare la closure
   window._gccSetCrtRows = function(rows) {
     _gcc_crt_rows = rows;
+    _gcc_crt_loading = false;
     try { aggiornaStato(); } catch(e) {}
+    // Svuota callback in attesa
+    var cbs = _gcc_crt_callbacks.splice(0);
+    cbs.forEach(function(cb){ try{cb();}catch(e){} });
   };
 
   function _readCrtRows() {
@@ -1540,10 +1570,9 @@
             'Inserisci KM' +
           '</button>';
       } else if (_crtRows.length === 0) {
-        if (localStorage.getItem(LS_TOKEN)) {
-          var goAhead = confirm('Tariffe CRT non caricate.\n\nPossibile causa: nessun tariffario importato sul Gist.\n\nProcedere comunque senza tariffe CRT?\n(I concordati esistenti verranno comunque mostrati)');
-          if (!goAhead) return;
-        }
+        // CRT vuoto ma non in caricamento: Gist non ha tariffe
+        // Procedi comunque mostrando i concordati esistenti
+        console.warn('[GCC] Concordati: _crtRows vuoto, nessuna tariffa CRT disponibile');
         costoCrtHtml = '<span style="color:#aaa;font-size:11px">Tariffario CRT non caricato</span>';
       } else {
         costoCrtHtml = '<span style="color:#c0392b;font-style:italic;font-size:11px">-- no match CRT --</span>';
