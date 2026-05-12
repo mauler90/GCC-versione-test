@@ -576,17 +576,44 @@
   // ═══════════════════════════════════════════════
 
   function eseguiMatch(){
-    // Se CRT è ancora in caricamento, aspetta e riprova
+    // Se CRT in caricamento: aspetta il completamento
     if (_gcc_crt_loading) {
+      _gcc_crt_callbacks.push(function() { eseguiMatch(); });
+      return;
+    }
+    // Se CRT vuoto: fetchalo direttamente ora (non dipende dal popup)
+    if (_gcc_crt_rows.length === 0 && localStorage.getItem(LS_TOKEN)) {
       var loadMsg = document.createElement('div');
       loadMsg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);'
         + 'background:#1a5276;color:white;padding:12px 24px;border-radius:8px;'
         + 'font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3)';
-      loadMsg.textContent = '⏳ Attendi... tariffe CRT in caricamento dal Gist';
+      loadMsg.textContent = '\u23F3 Caricamento tariffe CRT dal Gist...';
       document.body.appendChild(loadMsg);
-      _gcc_crt_callbacks.push(function() {
+      var tok = localStorage.getItem(LS_TOKEN);
+      _gcc_crt_loading = true;
+      fetch('https://api.github.com/gists/' + GIST_ID, {
+        headers: { 'Authorization': 'token ' + tok, 'Accept': 'application/vnd.github.v3+json' }
+      })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(gd) {
+        if (!gd) return Promise.all([Promise.resolve([]), Promise.resolve([])]);
+        return Promise.all([
+          _fetchGistFile(gd.files[GIST_FILE_CRT_LIV], tok),
+          _fetchGistFile(gd.files[GIST_FILE_CRT_SPE], tok)
+        ]);
+      })
+      .then(function(results) {
+        _gcc_crt_rows = (results[0] || []).concat(results[1] || []);
+        _gcc_crt_loading = false;
         loadMsg.remove();
-        eseguiMatch(); // riprova quando CRT è pronto
+        console.log('[GCC] CRT caricato per concordati: ' + _gcc_crt_rows.length + ' righe');
+        try { aggiornaStato(); } catch(e) {}
+        eseguiMatch(); // riprova ora che i dati ci sono
+      })
+      .catch(function() {
+        _gcc_crt_loading = false;
+        loadMsg.remove();
+        _eseguiMatchCore(); // procedi senza CRT
       });
       return;
     }
