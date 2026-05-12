@@ -952,8 +952,13 @@
 
   function apriAddizionali() {
     panel.style.display = 'none';
+
     var raw = localStorage.getItem(LS_ADDIZIONALI);
-    var add = {hc:'',reefer_perc:'',reefer_min:'',adr:'',seconda_presa:'',notte:'',vgm:'',fuel_perc:''};
+    var add = {
+      fuel_perc:'', hc:'', adr:'', seconda_presa:'',
+      notte:'', vgm:'', congestion:'', extra_stop:'',
+      allaccio_rf:'', reefer_perc:'', reefer_min:''
+    };
     try {
       if (raw) {
         var p = JSON.parse(raw);
@@ -961,80 +966,138 @@
       }
     } catch(e) { localStorage.removeItem(LS_ADDIZIONALI); }
 
-    var overlay = document.createElement('div');
-    overlay.id = 'gcc-add-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;';
-
-    var fields = [
-      {key:'hc',           label:'Supplemento HC',     unit:'€', hint:'fisso per unità'},
-      {key:'adr',           label:'ADR',                unit:'€', hint:'merci pericolose'},
-      {key:'seconda_presa',  label:'2ª Presa',       unit:'€', hint:'ritiro aggiuntivo'},
-      {key:'notte',          label:'Sosta Notte',        unit:'€', hint:'per notte'},
-      {key:'vgm',            label:'VGM',               unit:'€', hint:'pesata container'},
-      {key:'fuel_perc',      label:'Fuel Surcharge',     unit:'%',  hint:'% sul costo base'},
-      {key:'reefer_perc',    label:'Reefer %',          unit:'%',  hint:'% sul prezzo base'},
-      {key:'reefer_min',     label:'Reefer minimo',     unit:'€', hint:'importo minimo garantito'}
+    // ── Sezioni addizionali ──────────────────────────────────────
+    var sections = [
+      {
+        title: '\u26FD Fuel Surcharge',
+        color: '#e67e22',
+        fields: [
+          {key:'fuel_perc', label:'Fuel %', unit:'%', hint:'Percentuale sul costo base CRT'}
+        ]
+      },
+      {
+        title: '\u2795 Supplementi fissi',
+        color: '#2980b9',
+        fields: [
+          {key:'hc',           label:'Supplemento HC',  unit:'\u20AC', hint:'Per container High Cube'},
+          {key:'adr',          label:'ADR',             unit:'\u20AC', hint:'Merci pericolose'},
+          {key:'vgm',          label:'VGM',             unit:'\u20AC', hint:'Pesata container'},
+          {key:'seconda_presa',label:'2\xAA Presa',     unit:'\u20AC', hint:'Ritiro aggiuntivo'},
+          {key:'extra_stop',   label:'Extra Stop',      unit:'\u20AC', hint:'Fermata aggiuntiva'},
+          {key:'notte',        label:'Sosta Notte',     unit:'\u20AC', hint:'Per notte di sosta'},
+          {key:'congestion',   label:'Congestion',      unit:'\u20AC', hint:'Sovraffollamento porto'},
+          {key:'allaccio_rf',  label:'Allaccio Reefer', unit:'\u20AC', hint:'Connessione frigo al porto'}
+        ]
+      },
+      {
+        title: '\u2744 Reefer',
+        color: '#16a085',
+        fields: [
+          {key:'reefer_perc', label:'Reefer %',     unit:'%',         hint:'Percentuale sul costo base'},
+          {key:'reefer_min',  label:'Reefer minimo', unit:'\u20AC',   hint:'Importo minimo garantito'}
+        ]
+      }
     ];
 
-    var fieldsHtml = '';
-    fields.forEach(function(f) {
-      fieldsHtml +=
-        '<label style="font-size:11px;font-weight:bold;color:#555;display:flex;flex-direction:column;gap:3px">'
-        + f.label
-        + '<span style="font-size:10px;color:#999;font-weight:normal"> — ' + f.hint + '</span>'
-        + '<div style="display:flex;align-items:center;gap:6px">'
-        + '<input type="number" id="gcc-add-' + f.key + '" value="" min="0" step="0.01"'
-        + ' style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;width:90px;box-sizing:border-box">'
-        + '<span style="font-size:12px;color:#888">' + f.unit + '</span>'
-        + '</div></label>';
-    });
+    // ── CSS ──────────────────────────────────────────────────────
+    var css = [
+      '*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}',
+      'body{background:#f0f3f6;min-height:100vh}',
+      '#topbar{display:flex;align-items:center;justify-content:space-between;',
+        'background:linear-gradient(135deg,#1a5276,#2980b9);',
+        'color:white;padding:10px 18px;gap:10px}',
+      '#topbar h2{font-size:15px;font-weight:bold}',
+      '.tbtn{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;',
+        'font-size:12px;font-weight:bold;color:white}',
+      '.content{padding:20px;max-width:700px;margin:0 auto}',
+      '.section{background:white;border-radius:10px;margin-bottom:16px;',
+        'box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}',
+      '.sec-header{padding:10px 16px;font-size:12px;font-weight:bold;',
+        'color:white;display:flex;align-items:center;gap:8px}',
+      '.sec-body{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}',
+      'label{display:flex;flex-direction:column;gap:4px}',
+      '.lbl{font-size:11px;font-weight:bold;color:#555}',
+      '.hint{font-size:10px;color:#aaa;font-weight:normal}',
+      '.input-row{display:flex;align-items:center;gap:6px}',
+      'input[type=number]{padding:7px 10px;border:1px solid #d0d7de;border-radius:5px;',
+        'font-size:14px;width:90px;transition:border .2s}',
+      'input[type=number]:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.15)}',
+      '.unit{font-size:13px;color:#888;min-width:16px}',
+      '#status{font-size:11px;color:rgba(255,255,255,.8);margin-left:auto}'
+    ].join('');
 
-    var modal = document.createElement('div');
-    modal.style.cssText = 'background:white;border-radius:10px;padding:28px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.3);';
-    modal.innerHTML =
-      '<div style="font-weight:bold;color:#1a5276;font-size:15px;margin-bottom:4px">&#x2695; Addizionali Tariffario Base</div>'
-      +'<div style="font-size:11px;color:#888;margin-bottom:14px">Supplementi applicati sopra al prezzo base C.R.T. — sincronizzati su Gist</div>'
-      +'<div style="height:1px;background:#eee;margin-bottom:16px"></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">'
-      +fieldsHtml
-      +'</div>'
-      +'<div style="display:flex;justify-content:flex-end;gap:8px">'
-      +'<button id="gcc-add-cancel" style="padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#bdc3c7;font-size:13px;font-weight:bold">Annulla</button>'
-      +'<button id="gcc-add-save" style="padding:8px 18px;border:none;border-radius:5px;cursor:pointer;background:#27ae60;color:white;font-size:13px;font-weight:bold">&#x1F4BE; Salva</button>'
-      +'</div>';
-
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    fields.forEach(function(f) {
-      var el = document.getElementById('gcc-add-' + f.key);
-      if (el) el.value = add[f.key] || '';
-    });
-
-    function chiudiAdd() { if (overlay.parentNode) document.body.removeChild(overlay); }
-
-    document.getElementById('gcc-add-save').addEventListener('click', function() {
-      var nuovi = {};
-      fields.forEach(function(f) {
-        var el = document.getElementById('gcc-add-' + f.key);
-        nuovi[f.key] = el ? el.value.trim() : '';
+    // ── HTML sezioni ─────────────────────────────────────────────
+    var sectionsHtml = '';
+    sections.forEach(function(sec) {
+      var fieldsHtml = '';
+      sec.fields.forEach(function(f) {
+        fieldsHtml += '<label>'
+          + '<span class="lbl">' + f.label + ' <span class="hint">— ' + f.hint + '</span></span>'
+          + '<div class="input-row">'
+          + '<input type="number" id="add-' + f.key + '" min="0" step="0.01" value="' + (add[f.key]||'') + '" placeholder="0">'
+          + '<span class="unit">' + f.unit + '</span>'
+          + '</div></label>';
       });
-      try { localStorage.setItem(LS_ADDIZIONALI, JSON.stringify(nuovi)); } catch(e) {}
-      var tok = localStorage.getItem(LS_TOKEN);
-      if (tok) {
-        fetch('https://api.github.com/gists/' + GIST_ID, {
-          method: 'PATCH',
-          headers: {'Authorization': 'token ' + tok, 'Content-Type': 'application/json'},
-          body: JSON.stringify({files: {[GIST_FILE_ADD]: {content: JSON.stringify(nuovi, null, 2)}}})
-        }).catch(function(){});
-      }
-      chiudiAdd();
-      alert('Addizionali salvati!');
+      sectionsHtml += '<div class="section">'
+        + '<div class="sec-header" style="background:' + sec.color + '">' + sec.title + '</div>'
+        + '<div class="sec-body">' + fieldsHtml + '</div>'
+        + '</div>';
     });
 
-    document.getElementById('gcc-add-cancel').addEventListener('click', chiudiAdd);
-    overlay.addEventListener('click', function(e) { if (e.target === overlay) chiudiAdd(); });
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      + '<title>Addizionali</title><style>' + css + '</style></head><body>'
+      + '<div id="topbar">'
+      + '<h2>&#x2695; Addizionali C.R.T.</h2>'
+      + '<span id="status"></span>'
+      + '<button class="tbtn" id="btn-salva" style="background:#27ae60">&#x1F4BE; Salva</button>'
+      + '<button class="tbtn" id="btn-chiudi" style="background:#7f8c8d">Chiudi</button>'
+      + '</div>'
+      + '<div class="content">'
+      + '<p style="font-size:11px;color:#888;margin-bottom:16px">Supplementi applicati sul prezzo base C.R.T. — salvati in locale e sincronizzati sul Gist.</p>'
+      + sectionsHtml
+      + '</div>'
+      + '<script>'
+      + 'var _LS=' + JSON.stringify(LS_ADDIZIONALI) + ';'
+      + 'var _GID=' + JSON.stringify(GIST_ID) + ';'
+      + 'var _GFA=' + JSON.stringify(GIST_FILE_ADD) + ';'
+      + 'var _TK=' + JSON.stringify(LS_TOKEN) + ';'
+      + 'document.getElementById("btn-chiudi").onclick=function(){window.close();};'
+      + 'document.getElementById("btn-salva").onclick=function(){'
+      + '  var keys=["fuel_perc","hc","adr","seconda_presa","notte","vgm","congestion","extra_stop","allaccio_rf","reefer_perc","reefer_min"];'
+      + '  var nuovi={};'
+      + '  keys.forEach(function(k){var el=document.getElementById("add-"+k);nuovi[k]=el?el.value.trim():"";});'
+      + '  try{localStorage.setItem(_LS,JSON.stringify(nuovi));}catch(e){}'
+      + '  var status=document.getElementById("status");'
+      + '  var tok=localStorage.getItem(_TK);'
+      + '  if(tok){'
+      + '    status.textContent="\u23F3 Salvataggio Gist...";'
+      + '    fetch("https://api.github.com/gists/"+_GID,{'
+      + '      method:"PATCH",'
+      + '      headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},'
+      + '      body:JSON.stringify({files:{[_GFA]:{content:JSON.stringify(nuovi,null,2)}}})'
+      + '    }).then(function(r){'
+      + '      status.textContent=r.ok?"\u2705 Salvato sul Gist":"\u26A0 Gist: errore HTTP "+r.status;'
+      + '    }).catch(function(e){status.textContent="\u26A0 "+e.message;});'
+      + '  } else {'
+      + '    status.textContent="\u2705 Salvato in locale (no token)";'
+      + '  }'
+      + '  if(window.opener&&window.opener._gccOnAddSaved)window.opener._gccOnAddSaved(nuovi);'
+      + '};'
+      + '<\/script>'
+      + '</body></html>';
+
+    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    var url  = URL.createObjectURL(blob);
+    var win  = window.open('', 'tcp_addizionali', 'width=680,height=620,scrollbars=yes,resizable=yes');
+    win.location.replace(url);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 8000);
+
+    // Callback: aggiorna localStorage del parent quando popup salva
+    window._gccOnAddSaved = function(nuovi) {
+      try { localStorage.setItem(LS_ADDIZIONALI, JSON.stringify(nuovi)); } catch(e) {}
+    };
   }
+
 
   // ═══════════════════════════════════════════════
   //  GESTIONE LISTINO — POPUP COMPLETO
