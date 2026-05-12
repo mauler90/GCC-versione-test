@@ -1374,6 +1374,37 @@
     return false;
   }
 
+  // Normalizza abbreviazioni comuni nei nomi di località italiani
+  // Converte tutto alla forma abbreviata per confronto uniforme
+  // San/Santo/Santa → S.   Di/Del/Della → D.   Sul/Sulla/Sullo → S.   In → I.
+  function normalizzaAbbreviazioni(s) {
+    var u = s.toUpperCase()
+      // Articolati di SU (prima di SAN per evitare conflitti)
+      .replace(/\bSULL[OA]?\b'?/g, 'S.')
+      .replace(/\bSULLE\b/g, 'S.')
+      .replace(/\bSUGLI\b/g, 'S.')
+      .replace(/\bSUL\b/g, 'S.')
+      // San/Santo/Santa
+      .replace(/\bSANTA\b/g, 'S.')
+      .replace(/\bSANTO\b/g, 'S.')
+      .replace(/\bSAN\b/g, 'S.')
+      // Di e articolati
+      .replace(/\bDELL[OA]\b/g, 'D.')
+      .replace(/\bDELL'/g, 'D.')
+      .replace(/\bDEGLI\b/g, 'D.')
+      .replace(/\bDELLE\b/g, 'D.')
+      .replace(/\bDEL\b/g, 'D.')
+      .replace(/\bDEI\b/g, 'D.')
+      .replace(/\bDI\b/g, 'D.')
+      // In
+      .replace(/\bIN\b/g, 'I.')
+      // Normalizza spazio dopo il punto: 'S. Pietro' → 'S.PIETRO'
+      .replace(/([A-Z])\.\s+/g, '$1.')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return u;
+  }
+
   function cercaCRT(indirizzo, porto, crtRows) {
     if (!crtRows || crtRows.length === 0) return null;
     // Accetta sia oggetto {loc,prov,cap} che stringa raw
@@ -1400,29 +1431,34 @@
     // Trova righe che corrispondono alla locality (multi-strategia)
     function trovaPerLoc(righe, q) {
       if (!q || q.length < 2) return [];
-      // a) esatto
-      var es = righe.filter(function(r) { return (r.localita||'').toUpperCase() === q; });
+      var qN = normalizzaAbbreviazioni(q); // versione normalizzata della query
+      function matchPair(rl, q_) {
+        var rlN = normalizzaAbbreviazioni(rl);
+        // esatto (originale o normalizzato)
+        if (rl === q_ || rlN === qN) return 'exact';
+        // tariffario contenuto nell'ordine
+        if (rl.length > 2 && (q_.indexOf(rl) !== -1 || qN.indexOf(rlN) !== -1)) return 'in-ord';
+        // ordine contenuto nel tariffario
+        if (rl.length > 2 && (rl.indexOf(q_) !== -1 || rlN.indexOf(qN) !== -1)) return 'in-tar';
+        return null;
+      }
+      // a) exact
+      var es = righe.filter(function(r) { return matchPair((r.localita||'').toUpperCase(), q) === 'exact'; });
       if (es.length) return es;
-      // b) nome tariffario contenuto nell'indirizzo ordine
-      var inOrd = righe.filter(function(r) {
-        var rl = (r.localita||'').toUpperCase();
-        return rl.length > 2 && q.indexOf(rl) !== -1;
-      });
+      // b) tariffario contenuto nell'ordine
+      var inOrd = righe.filter(function(r) { return matchPair((r.localita||'').toUpperCase(), q) === 'in-ord'; });
       inOrd.sort(function(a,b){ return (b.localita||'').length-(a.localita||'').length; });
       if (inOrd.length) return inOrd;
-      // c) indirizzo ordine contenuto nel nome tariffario
-      var inTar = righe.filter(function(r) {
-        var rl = (r.localita||'').toUpperCase();
-        return rl.length > 2 && rl.indexOf(q) !== -1;
-      });
+      // c) ordine contenuto nel tariffario
+      var inTar = righe.filter(function(r) { return matchPair((r.localita||'').toUpperCase(), q) === 'in-tar'; });
       inTar.sort(function(a,b){ return (a.localita||'').length-(b.localita||'').length; });
       if (inTar.length) return inTar;
-      // d) tutte le parole significative presenti
-      var words = q.split(' ').filter(function(w){ return w.length > 2; });
+      // d) tutte le parole significative (normalizzate) presenti
+      var words = qN.split(' ').filter(function(w){ return w.length > 1; });
       if (words.length > 1) {
         var byW = righe.filter(function(r) {
-          var rl = (r.localita||'').toUpperCase();
-          return words.every(function(w){ return rl.indexOf(w) !== -1; });
+          var rlN = normalizzaAbbreviazioni((r.localita||'').toUpperCase());
+          return words.every(function(w){ return rlN.indexOf(w) !== -1; });
         });
         if (byW.length) return byW;
       }
