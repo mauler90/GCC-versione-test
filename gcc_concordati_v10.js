@@ -2102,8 +2102,10 @@
       '.ctr-lef{font-size:11px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
       '.ctr-nav{padding:3px 8px;border:none;background:#2980b9;color:white;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;flex-shrink:0}'+
       '@page{size:A4 landscape;margin:8mm}'+
-'@media print{.no-print{display:none!important}table{font-size:9px}td,th{padding:2px 4px!important}}'+
-        '#topbar,#overlay,.no-print{display:none!important}'+
+      '@media print{'+
+        '.no-print{display:none!important}'+
+        'table{font-size:9px}td,th{padding:2px 4px!important}'+
+        '#topbar,#overlay{display:none!important}'+
         'body{background:white}'+
         '.section{box-shadow:none;border:1px solid #ccc;break-inside:avoid}'+
         '#print-header{display:block!important}'+
