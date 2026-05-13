@@ -194,8 +194,8 @@
       // Fallback minimo: usa prima riga
       if (!found && sortedRows.length) found = sortedRows[0];
       if (!found) return null;
-      base20 = Math.round(parseFloat(found.c20 || 0));
-      base40 = Math.round(parseFloat(found.c40 || found.c20 || 0));
+      base20 = Math.round(parseFloat(String(found.c20||'0').replace(/[^0-9.,]/g,'').replace(',','.')) || 0);
+      base40 = Math.round(parseFloat(String(found.c40||found.c20||'0').replace(/[^0-9.,]/g,'').replace(',','.')) || 0);
     }
 
     var costoBase = ct.isHC ? base40 : (ct.size === '20' ? base20 : base40);
@@ -1964,14 +1964,14 @@
         '<td>'+g.traffic+'</td>'+
         '<td>'+g.porto.toUpperCase()+'</td>'+
         '<td style="white-space:nowrap" id="tcosto_'+gi+'">'+costoHtml+'</td>'+
+        '<td style="color:#888;font-size:11px" id="tnote_'+gi+'">'+(g.note||'')+'</td>'+
+        '<td style="color:#aaa;font-size:11px" id="tdata_'+gi+'">'+(g.data_validita||'')+'</td>'+
         '<td class="no-print" style="white-space:nowrap">'+
           '<button title="Confronta vettori" '+
             'style="padding:3px 9px;background:#d35400;color:white;border:none;border-radius:3px;cursor:pointer;font-size:14px" '+
             'data-gdat="'+encodeURIComponent(JSON.stringify({porto:g.porto,containerType:g.containerType,indirizziParsed:g.indirizziParsed,isADR:g.isADR||false,crtMatch:null}))+'" '+
             'onclick="showVettori(JSON.parse(decodeURIComponent(this.dataset.gdat)))">&#x1F69A;<\/button>'+
         '</td>'+
-        '<td style="color:#888;font-size:11px" id="tnote_'+gi+'">'+(g.note||'')+'</td>'+
-        '<td style="color:#aaa;font-size:11px" id="tdata_'+gi+'">'+(g.data_validita||'')+'</td>'+
         '<td class="no-print" style="white-space:nowrap">'+
           '<button class="btn-modifica" data-chiave="'+g.chiave+'" data-gi="'+gi+'" title="Modifica tariffa" '+
             'style="padding:4px 9px;border:none;background:#8e44ad;color:white;border-radius:4px;cursor:pointer;font-size:13px;margin-right:4px;">&#x270F;<\/button>'+
@@ -2101,7 +2101,8 @@
       '.ctr-nr{font-size:12px;font-weight:bold;color:#1a5276;font-family:monospace;min-width:130px}'+
       '.ctr-lef{font-size:11px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
       '.ctr-nav{padding:3px 8px;border:none;background:#2980b9;color:white;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;flex-shrink:0}'+
-      '@media print{'+
+      '@page{size:A4 landscape;margin:8mm}'+
+'@media print{.no-print{display:none!important}table{font-size:9px}td,th{padding:2px 4px!important}}'+
         '#topbar,#overlay,.no-print{display:none!important}'+
         'body{background:white}'+
         '.section{box-shadow:none;border:1px solid #ccc;break-inside:avoid}'+
@@ -2181,7 +2182,16 @@
       'ov.onclick=function(){document.querySelectorAll(".gcc-vp-ov").forEach(function(e){e.remove();});pn.remove();};'+
       '}'+
 
-      'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
+      'function stampaConcordati(){'+
+  'var sel=document.getElementById("print-sel").value;'+
+  'var st=document.getElementById("sect-trovati");'+
+  'var sm=document.getElementById("sect-mancanti");'+
+  'if(st)st.style.display=(sel==="mancanti"?"none":"");'+
+  'if(sm)sm.style.display=(sel==="trovati"?"none":"");'+
+  'window.print();'+
+  'setTimeout(function(){if(st)st.style.display="";if(sm)sm.style.display="";},800);'+
+'}'+
+'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       /* ── data input auto-format DD/MM/YY ── */
       'function initDataInput(el){'+
         'el.value=_dataOggi;'+
@@ -2253,14 +2263,7 @@
       '});'+
 
       /* ── stampa ── */
-      'document.getElementById("btn-stampa").addEventListener("click",function(){'+
-        'var perc=_fuelOn?(parseFloat(document.getElementById("fuel-perc").value)||0):0;'+
-        'var fuelInfo=_fuelOn&&perc>0?" | Fuel Surcharge: "+perc+"%":"";'+
-        'var d=new Date();'+
-        'var ds=String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();'+
-        'document.getElementById("print-date").textContent="Stampa del: "+ds+fuelInfo;'+
-        'window.print();'+
-      '});'+
+      'document.getElementById("btn-stampa").addEventListener("click",function(){stampaConcordati();});'+
 
       /* ── fuel toggle modale ── */
       'document.getElementById("m-fuel-toggle").addEventListener("click",function(){'+
@@ -2655,7 +2658,7 @@
               '<span style="font-size:12px;color:white">%<\/span>'+
             '<\/div>'+
           '<\/div>'+
-          '<button id="btn-stampa">&#x1F5A8; Stampa<\/button>'+
+          '<select id="print-sel" style="padding:5px 9px;border:1px solid #bbb;border-radius:5px;font-size:12px;cursor:pointer">'+'<option value="all">Stampa tutto</option>'+'<option value="trovati">Solo concordati</option>'+'<option value="mancanti">Solo mancanti</option>'+'</select> '+'<button id="btn-stampa">&#x1F5A8; Stampa<\/button>'+
         '<\/div>'+
       '<\/div>'+
 
