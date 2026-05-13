@@ -1661,10 +1661,10 @@
       var gKey = chiave + '||' + equipKey + '||' + costoB;
       if(!gruppiMap[gKey]){
         var extras=[];
-        if(ct.isHC&&m.costo_hc&&m.costo_hc!=='') extras.push('+'+m.costo_hc+'\u00a0(HC)');
-        if(m.congestion&&m.congestion!=='')        extras.push('+'+m.congestion+'\u00a0(cong)');
-        if(m.extra_stop&&m.extra_stop!=='')        extras.push('+'+m.extra_stop+'\u00a0(ex.stop)');
-        if(m.s_notte&&m.s_notte!=='')              extras.push('+'+m.s_notte+'\u00a0(s.notte)');
+        if(ct.isHC&&m.costo_hc&&m.costo_hc!=='') extras.push('+ \u20ac'+m.costo_hc+' HC');
+        if(m.congestion&&m.congestion!=='')        extras.push('+ \u20ac'+m.congestion+' Congestion');
+        if(m.extra_stop&&m.extra_stop!=='')        extras.push('+ \u20ac'+m.extra_stop+' Extra Stop');
+        if(m.s_notte&&m.s_notte!=='')              extras.push('+ \u20ac'+m.s_notte+' Sosta Notte');
         if(m.allaccio_rf&&m.allaccio_rf!=='') {
           var _rfBase=parseFloat(costoB||0);
           if(hasFuel&&_rfBase>0&&parseFloat(fuelPercSalvata)>0)
@@ -1672,7 +1672,7 @@
           var _rfAmt=_rfBase>0?Math.round(_rfBase*parseFloat(m.allaccio_rf)/100):0;
           if(_rfAmt>0) extras.push('+\u20ac'+_rfAmt+'\u00a0Reefer\u00a0('+m.allaccio_rf+'%)');
         }
-        if(m.adr&&m.adr!=='')                      extras.push('+'+m.adr+'\u00a0(ADR)');
+        if(m.adr&&m.adr!=='')                      extras.push('+ \u20ac'+m.adr+' ADR');
         var hasFuel=norm(m.fuel)==='si';
         gruppiMap[gKey] = {
           gKey:gKey, chiave:chiave,
@@ -1800,9 +1800,9 @@
       var n = g.containers.length;
 
       var costoHtml =
-        '<span style="font-weight:bold;color:#27ae60">\u20ac\u00a0'+g.costoB+'</span>'+
-        (g.extras.length?' <span style="color:#7f8c8d;font-size:11px">'+g.extras.join(' ')+'</span>':'')+
-        (g.hasFuel?' <span class="fuel-cell" data-base="'+g.costoB+'" style="color:#e67e22;font-size:11px"></span>':'');
+        '<span style="font-weight:bold;color:#27ae60">\u20ac'+g.costoB+'</span>'+
+        (g.hasFuel?' <span class="fuel-cell" data-base="'+g.costoB+'" style="color:#e67e22;font-size:11px"></span>':'')+
+        (g.extras.length?' <span style="color:#7f8c8d;font-size:11px"> '+g.extras.join(' ')+'</span>':'');
 
       // Encode containers list for the badge
       var ctrsJson = JSON.stringify(g.containers).replace(/"/g,'&quot;');
@@ -2074,8 +2074,12 @@
       'function aggiornaFuelCells(){'+
         'var perc=_fuelOn?(parseFloat(document.getElementById("fuel-perc").value)||0):0;'+
         'document.querySelectorAll(".fuel-cell").forEach(function(el){'+
-          'if(perc>0){var fv=(parseFloat(el.dataset.base)*perc/100).toFixed(2);el.textContent=" [Fuel: +\u20ac"+fv+"]";}'+
-          'else{el.textContent="";}'+
+          'if(perc>0){'+
+            'var base=parseFloat(el.dataset.base);'+
+            'var fv=Math.round(base*perc/100);'+
+            'var tot=Math.round(base+fv);'+
+            'el.textContent=" + \u20ac"+fv+" fuel ("+perc+"%) = \u20ac"+tot;'+
+          '}else{el.textContent="";}'+
         '});'+
       '}'+
 
@@ -2311,10 +2315,10 @@
         'var ct=r.containerType;'+
         'var costoB=ct.isHC?(edit.costo_40||""):(ct.size==="20"?(edit.costo_20||""):(edit.costo_40||""));'+
         'var extras=[];'+
-        'if(ct.isHC&&edit.costo_hc)extras.push("+"+edit.costo_hc+"\u00a0(HC)");'+
-        'if(edit.congestion)extras.push("+"+edit.congestion+"\u00a0(cong)");'+
-        'if(edit.extra_stop)extras.push("+"+edit.extra_stop+"\u00a0(ex.stop)");'+
-        'if(edit.s_notte)extras.push("+"+edit.s_notte+"\u00a0(s.notte)");'+
+        'if(ct.isHC&&edit.costo_hc)extras.push("+ \u20ac"+edit.costo_hc+" HC");'+
+        'if(edit.congestion)extras.push("+ \u20ac"+edit.congestion+" Congestion");'+
+        'if(edit.extra_stop)extras.push("+ \u20ac"+edit.extra_stop+" Extra Stop");'+
+        'if(edit.s_notte)extras.push("+ \u20ac"+edit.s_notte+" Sosta Notte");'+
         'if(edit.allaccio_rf&&parseFloat(costoB)>0){'+
         'var _rfBase=parseFloat(costoB);'+
         'if(edit.fuel==="SI"&&_fuelOn){'+
@@ -2324,7 +2328,7 @@
         'var _rfAmt=Math.round(_rfBase*parseFloat(edit.allaccio_rf)/100);'+
         'if(_rfAmt>0)extras.push("+\u20ac"+_rfAmt+"\u00a0Reefer\u00a0("+edit.allaccio_rf+"%)");'+
         '}'+
-        'if(edit.adr)extras.push("+"+edit.adr+"\u00a0(ADR)");'+
+        'if(edit.adr)extras.push("+ \u20ac"+edit.adr+" ADR");'+
         'var fuelStr="";'+
         'if(edit.fuel==="SI"&&costoB){'+
           'var perc=_fuelOn?(parseFloat(document.getElementById("fuel-perc").value)||0):0;'+
@@ -2365,10 +2369,10 @@
         'var ct=g.containerType;'+
         'var costoB=ct.isHC?(edit.costo_40||""):(ct.size==="20"?(edit.costo_20||""):(edit.costo_40||""));'+
         'var extras=[];'+
-        'if(ct.isHC&&edit.costo_hc)extras.push("+"+edit.costo_hc+"\u00a0(HC)");'+
-        'if(edit.congestion)extras.push("+"+edit.congestion+"\u00a0(cong)");'+
-        'if(edit.extra_stop)extras.push("+"+edit.extra_stop+"\u00a0(ex.stop)");'+
-        'if(edit.s_notte)extras.push("+"+edit.s_notte+"\u00a0(s.notte)");'+
+        'if(ct.isHC&&edit.costo_hc)extras.push("+ \u20ac"+edit.costo_hc+" HC");'+
+        'if(edit.congestion)extras.push("+ \u20ac"+edit.congestion+" Congestion");'+
+        'if(edit.extra_stop)extras.push("+ \u20ac"+edit.extra_stop+" Extra Stop");'+
+        'if(edit.s_notte)extras.push("+ \u20ac"+edit.s_notte+" Sosta Notte");'+
         'if(edit.allaccio_rf&&parseFloat(costoB)>0){'+
         'var _rfBase=parseFloat(costoB);'+
         'if(edit.fuel==="SI"&&_fuelOn){'+
@@ -2378,7 +2382,7 @@
         'var _rfAmt=Math.round(_rfBase*parseFloat(edit.allaccio_rf)/100);'+
         'if(_rfAmt>0)extras.push("+\u20ac"+_rfAmt+"\u00a0Reefer\u00a0("+edit.allaccio_rf+"%)");'+
         '}'+
-        'if(edit.adr)extras.push("+"+edit.adr+"\u00a0(ADR)");'+
+        'if(edit.adr)extras.push("+ \u20ac"+edit.adr+" ADR");'+
         'var fuelStr="";'+
         'if(edit.fuel==="SI"&&costoB){'+
           'var perc=_fuelOn?(parseFloat(document.getElementById("fuel-perc").value)||0):0;'+
