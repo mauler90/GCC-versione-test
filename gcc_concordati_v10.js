@@ -2018,7 +2018,7 @@
           'h+="<div style=\\"display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;margin-bottom:6px;background:"+bg+";"+bd+"\\">";'+
           'h+="<span style=\\"font-size:18px;width:28px;text-align:center\\">"+medal+"</span>";'+
           'h+="<span style=\\"font-weight:bold;min-width:110px;font-size:13px\\">"+v.nome+"</span>";'+
-          'h+="<span style=\\"flex:1;font-size:12px;color:#555\\">\u20ac"+v.costoBase+(v.fuelAmt>0?" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%)\")":\"))")+" = \u20ac"+v.subtotale+addStr+"</span>";'+
+          'h+="<span style=\\"flex:1;font-size:12px;color:#555\\">\u20ac"+v.costoBase+(v.fuelAmt>0?" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%)"+"":"")+" = \u20ac"+v.subtotale+addStr+"</span>";'+
           'h+="<span style=\\"font-size:16px;font-weight:bold;color:#27ae60\\">\u20ac"+v.totale+"</span></div>";'+
         '});'+
       '}'+
