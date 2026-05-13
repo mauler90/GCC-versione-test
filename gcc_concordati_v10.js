@@ -1838,7 +1838,7 @@
     var thColsTrovati =
       '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
       '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
-      '<th>Costo</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
+      '<th>Costo</th><th class="no-print">Vettori</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
 
     // Raggruppa mancanti per tratta + equip
     var mGruppiM = [];
@@ -1933,7 +1933,7 @@
     var thCols =
       '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
       '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
-      '<th>Costo CRT</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
+      '<th>Costo CRT</th><th class="no-print">Vettori</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
 
     // Genera HTML trovati raggruppati
     var htmlTrovati='';
@@ -1964,6 +1964,12 @@
         '<td>'+g.traffic+'</td>'+
         '<td>'+g.porto.toUpperCase()+'</td>'+
         '<td style="white-space:nowrap" id="tcosto_'+gi+'">'+costoHtml+'</td>'+
+        '<td class="no-print" style="white-space:nowrap">'+
+          '<button title="Confronta vettori" '+
+            'style="padding:3px 9px;background:#d35400;color:white;border:none;border-radius:3px;cursor:pointer;font-size:14px" '+
+            'data-gdat="'+encodeURIComponent(JSON.stringify({porto:g.porto,containerType:g.containerType,indirizziParsed:g.indirizziParsed,isADR:g.isADR||false,crtMatch:null}))+'" '+
+            'onclick="showVettori(JSON.parse(decodeURIComponent(this.dataset.gdat)))">&#x1F69A;<\/button>'+
+        '</td>'+
         '<td style="color:#888;font-size:11px" id="tnote_'+gi+'">'+(g.note||'')+'</td>'+
         '<td style="color:#aaa;font-size:11px" id="tdata_'+gi+'">'+(g.data_validita||'')+'</td>'+
         '<td class="no-print" style="white-space:nowrap">'+
@@ -2024,6 +2030,12 @@
         '<td>'+g.traffic+'</td>'+
         '<td>'+g.porto.toUpperCase()+'</td>'+
         '<td id="mcosto_'+mgi+'" style="white-space:nowrap;line-height:1.6">'+costoCrtHtml+'</td>'+
+        '<td class="no-print" style="white-space:nowrap">'+
+          '<button title="Confronta vettori" '+
+            'style="padding:3px 9px;background:#d35400;color:white;border:none;border-radius:3px;cursor:pointer;font-size:14px" '+
+            'data-gdat="'+encodeURIComponent(JSON.stringify({porto:g.porto,containerType:g.containerType,indirizziParsed:g.indirizziParsed,isADR:g.isADR||false,crtMatch:g.crtMatch?{riga:{km:g.crtMatch.riga.km}}:null}))+'\" '+
+            'onclick="showVettori(JSON.parse(decodeURIComponent(this.dataset.gdat)))">&#x1F69A;<\/button>'+
+        '</td>'+
         '<td style="font-size:11px;color:#888" id="mnote_'+mgi+'"></td>'+
         '<td style="color:#aaa;font-size:11px" id="mdata_'+mgi+'"></td>'+
         '<td class="no-print" style="white-space:nowrap">'+
