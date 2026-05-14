@@ -196,6 +196,7 @@
       if (!found) return null;
       base20 = Math.round(parseFloat(String(found.c20||'0').replace(/[^0-9.,]/g,'').replace(',','.')) || 0);
       base40 = Math.round(parseFloat(String(found.c40||found.c20||'0').replace(/[^0-9.,]/g,'').replace(',','.')) || 0);
+      matchInfo = effectiveKm + ' km' + (kmMin > 0 && kmCRT < kmMin ? ' (min. ' + kmMin + ' km)' : '');
     }
 
     var costoBase = ct.isHC ? base40 : (ct.size === '20' ? base20 : base40);
@@ -234,7 +235,7 @@
 
     return { id:v.id, nome:v.nome, tipo:v.tipo, costoBase:costoBase,
              fuelPerc:fuelPerc, fuelAmt:fuelAmt, subtotale:subtotale,
-             addExtra:addExtra, totale:totale };
+             addExtra:addExtra, totale:totale, matchInfo:matchInfo };
   }
 
   // Cache dei gruppi per il pannello vettori (indicizzati dal popup)
@@ -2252,11 +2253,17 @@
           'var bg=i===0?"#fff8f0":"#f8f9fa";'+
           'var bd=i===0?"border:1px solid #f5a623":"border:1px solid #eee";'+
           'var medal=i===0?"\uD83E\uDD47":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":""+(i+1)+".";'+
-          'h+="<div style=\\"display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;margin-bottom:6px;background:"+bg+";"+bd+"\\">";'+
+          'var cStr="\u20ac"+(v.costoBase||0);'+
+          'if(v.fuelAmt>0)cStr+=" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%) = \u20ac"+v.subtotale;'+
+          'if(addStr)cStr+=addStr;'+
+          'h+="<div style=\\"border-radius:7px;margin-bottom:8px;background:"+bg+";"+bd+"\\">";'+
+          'h+="<div style=\\"display:flex;align-items:center;gap:10px;padding:9px 12px\\">";'+
           'h+="<span style=\\"font-size:18px;width:28px;text-align:center\\">"+medal+"</span>";'+
           'h+="<span style=\\"font-weight:bold;min-width:120px;font-size:13px\\">"+( v.nome||"?")+ "</span>";'+
-          'h+="<span style=\\"flex:1;font-size:12px;color:#555\\">\u20ac"+(v.costoBase||0)+(v.fuelAmt>0?" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%)":"")+(v.subtotale!==v.costoBase?" = \u20ac"+v.subtotale:"")+addStr+"</span>";'+
+          'h+="<span style=\\"flex:1;font-size:12px;color:#555\\">"+cStr+"</span>";'+
           'h+="<span style=\\"font-size:16px;font-weight:bold;color:#27ae60\\">\u20ac"+(v.totale||0)+"</span></div>";'+
+          'if(v.matchInfo)h+="<div style=\\"font-size:10px;color:#aaa;padding:0 12px 7px 58px\\">\uD83D\uDCCC "+v.matchInfo+"</div>";'+
+          'h+="</div>";'+
         '});'+
       '}'+
       'h+="</div>";'+
