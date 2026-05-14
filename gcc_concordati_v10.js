@@ -262,6 +262,9 @@
       }
       var kmBase = kmCRT;
       var isADR  = g.isADR || false;
+      // Multi-stop: per carrier KM il km non può essere un singolo stop
+      var nStops = g.indirizziParsed ? g.indirizziParsed.length : 1;
+      var isMultiStop = nStops > 1;
 
       // Diagnostico: se registry vuoto o tariffe vuote, segnala
       if (!_gcc_vettori_reg.length) {
@@ -276,11 +279,14 @@
       var results = [];
       var diagNulls = [];
       _gcc_vettori_reg.forEach(function(v) {
+        // Carrier KM su route multi-stop: skippa (km non affidabile)
+        if (isMultiStop && v.tipo !== 'localita') return;
         var r = _calcolaVettore(v, parsed, porto, ct, kmCRT, isADR, kmBase);
         if (r) results.push(r);
         else {
           var rows = _gcc_vettori_tariffe[v.id]||[];
-          var reason = v.porti.indexOf(porto)<0 ? 'porto '+porto+' non coperto'
+          var reason = (isMultiStop && v.tipo !== 'localita') ? 'route multi-stop: inserisci km manuale'
+            : v.porti.indexOf(porto)<0 ? 'porto '+porto+' non coperto'
             : !rows.length ? 'tariffe vuote'
             : v.tipo!=='localita'&&!kmCRT ? 'km=0 (mancante nel CRT)'
             : 'no match tariffa';
@@ -2257,15 +2263,19 @@
           'var bg=i===0?"#fff8f0":"#f8f9fa";'+
           'var bd=i===0?"border:1px solid #f5a623":"border:1px solid #eee";'+
           'var medal=i===0?"\uD83E\uDD47":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":""+(i+1)+".";'+
-          'var cStr="\u20ac"+(v.costoBase||0);'+
-          'if(v.fuelAmt>0)cStr+=" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%) = \u20ac"+v.subtotale;'+
-          'if(addStr)cStr+=addStr;'+
+          'var hasDetail=(v.fuelAmt>0)||(v.addExtra&&v.addExtra.length>0);'+
+          'var cStr="";'+
+          'if(hasDetail){'+
+            'cStr="\u20ac"+(v.costoBase||0);'+
+            'if(v.fuelAmt>0)cStr+=" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%) = \u20ac"+v.subtotale;'+
+            'if(addStr)cStr+=addStr;'+
+          '}'+
           'h+="<div style=\\"border-radius:7px;margin-bottom:8px;background:"+bg+";"+bd+"\\">";'+
           'h+="<div style=\\"display:flex;align-items:center;gap:10px;padding:9px 12px\\">";'+
           'h+="<span style=\\"font-size:18px;width:28px;text-align:center\\">"+medal+"</span>";'+
           'h+="<span style=\\"font-weight:bold;min-width:120px;font-size:13px\\">"+( v.nome||"?")+ "</span>";'+
-          'h+="<span style=\\"flex:1;font-size:12px;color:#555\\">"+cStr+"</span>";'+
-          'h+="<span style=\\"font-size:16px;font-weight:bold;color:#27ae60\\">\u20ac"+(v.totale||0)+"</span></div>";'+
+          'if(cStr)h+="<span style=\\"flex:1;font-size:12px;color:#555\\">"+cStr+"</span>";'+
+          'h+="<span style=\\"font-size:16px;font-weight:bold;color:#27ae60;margin-left:auto\\">\u20ac"+(v.totale||0)+"</span></div>";'+
           'if(v.matchInfo)h+="<div style=\\"font-size:10px;color:#aaa;padding:0 12px 7px 58px\\">\uD83D\uDCCC "+v.matchInfo+"</div>";'+
           'h+="</div>";'+
         '});'+
