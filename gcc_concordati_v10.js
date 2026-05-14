@@ -144,10 +144,10 @@
             ? fetch(f.raw_url).then(function(r) { return r.json(); })
             : Promise.resolve(JSON.parse(f.content));
           return fp.then(function(d) {
-            if (d && d.rows) {
-              _gcc_vettori_tariffe[v.id] = d.rows;
-              v.add    = d.add    || v.add    || {};
-              v.colMap = d.colMap || v.colMap || {};
+            if (d) {
+              if (d.rows && d.rows.length) _gcc_vettori_tariffe[v.id] = d.rows;
+              if (d.add)    v.add    = d.add;    // sempre aggiorna addizionali
+              if (d.colMap) v.colMap = d.colMap;
             }
           });
         });
@@ -279,14 +279,13 @@
       var results = [];
       var diagNulls = [];
       _gcc_vettori_reg.forEach(function(v) {
-        // Carrier KM su route multi-stop: skippa (km non affidabile)
-        if (isMultiStop && v.tipo !== 'localita') return;
+        // Route multi-stop: nessun carrier (km non affidabile per nessun tipo)
+        if (isMultiStop) return;
         var r = _calcolaVettore(v, parsed, porto, ct, kmCRT, isADR, kmBase);
         if (r) results.push(r);
         else {
           var rows = _gcc_vettori_tariffe[v.id]||[];
-          var reason = (isMultiStop && v.tipo !== 'localita') ? 'route multi-stop: inserisci km manuale'
-            : v.porti.indexOf(porto)<0 ? 'porto '+porto+' non coperto'
+          var reason = v.porti.map(function(p){return p.toUpperCase();}).indexOf(porto.toUpperCase())<0 ? 'porto '+porto+' non coperto'
             : !rows.length ? 'tariffe vuote'
             : v.tipo!=='localita'&&!kmCRT ? 'km=0 (mancante nel CRT)'
             : 'no match tariffa';
@@ -294,6 +293,9 @@
         }
       });
       results.sort(function(a, b){ return a.totale - b.totale; });
+      if (isMultiStop && !results.length) {
+        return JSON.stringify([{_diag:'MULTI_STOP', msg:'Route con '+nStops+' fermate: i costi vettori sono disponibili solo su tratte singola destinazione. Per route multi-stop usa la colonna Inserisci KM.'}]);
+      }
       if (!results.length) {
         return JSON.stringify([{_diag:'NO_MATCH', loc:loc, porto:porto, km:kmCRT, details:diagNulls}]);
       }
@@ -2244,7 +2246,9 @@
       'h+="<div style=\\"padding:16px\\">";'+
       'if(res.length&&res[0]&&res[0]._diag){'+
         'var _d=res[0];'+
-        'if(_d._diag==="NO_REG"||_d._diag==="NO_TARIFFE"){'+
+        'if(_d._diag==="MULTI_STOP"){'+
+          'h+="<div style=\\"padding:16px;color:#e67e22;text-align:center\\">\uD83D\uDEA7 "+_d.msg+"</div>";'+
+        '}else if(_d._diag==="NO_REG"||_d._diag==="NO_TARIFFE"){'+
           'h+="<div style=\\"color:#e74c3c;padding:16px;text-align:center\\">\u26A0 "+_d.msg+"</div>";'+
         '}else if(_d._diag==="NO_MATCH"){'+
           'h+="<p style=\\"color:#888;margin-bottom:8px\\">Nessun vettore copre questa tratta.</p>";'+
@@ -2263,18 +2267,15 @@
           'var bg=i===0?"#fff8f0":"#f8f9fa";'+
           'var bd=i===0?"border:1px solid #f5a623":"border:1px solid #eee";'+
           'var medal=i===0?"\uD83E\uDD47":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":""+(i+1)+".";'+
-          'var hasDetail=(v.fuelAmt>0)||(v.addExtra&&v.addExtra.length>0);'+
-          'var cStr="";'+
-          'if(hasDetail){'+
-            'cStr="\u20ac"+(v.costoBase||0);'+
-            'if(v.fuelAmt>0)cStr+=" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%) = \u20ac"+v.subtotale;'+
-            'if(addStr)cStr+=addStr;'+
-          '}'+
+          'var cStr="\u20ac"+(v.costoBase||0);'+
+          'if(v.fuelAmt>0)cStr+=" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%) = \u20ac"+v.subtotale;'+
+          'if(addStr)cStr+=addStr;'+
+          'var showDet=(cStr!=="\u20ac"+(v.totale||0));'+
           'h+="<div style=\\"border-radius:7px;margin-bottom:8px;background:"+bg+";"+bd+"\\">";'+
           'h+="<div style=\\"display:flex;align-items:center;gap:10px;padding:9px 12px\\">";'+
           'h+="<span style=\\"font-size:18px;width:28px;text-align:center\\">"+medal+"</span>";'+
           'h+="<span style=\\"font-weight:bold;min-width:120px;font-size:13px\\">"+( v.nome||"?")+ "</span>";'+
-          'if(cStr)h+="<span style=\\"flex:1;font-size:12px;color:#555\\">"+cStr+"</span>";'+
+          'if(showDet)h+="<span style=\\"flex:1;font-size:12px;color:#555\\">"+cStr+"</span>";'+
           'h+="<span style=\\"font-size:16px;font-weight:bold;color:#27ae60;margin-left:auto\\">\u20ac"+(v.totale||0)+"</span></div>";'+
           'if(v.matchInfo)h+="<div style=\\"font-size:10px;color:#aaa;padding:0 12px 7px 58px\\">\uD83D\uDCCC "+v.matchInfo+"</div>";'+
           'h+="</div>";'+
