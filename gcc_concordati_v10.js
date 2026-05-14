@@ -168,11 +168,15 @@
     var add = v.add || {};
     var base20 = 0, base40 = 0;
 
+    var matchInfo = '';  // fonte usata per il calcolo (per il pannello)
     if (v.tipo === 'localita') {
       var match = cercaCRT(parsed, porto, rows);
       if (!match) return null;
       base20 = Math.round(parseFloat(match.riga.c20 || 0));
       base40 = Math.round(parseFloat(match.riga.c40 || match.riga.c20 || 0));
+      matchInfo = (match.riga.localita || '') + (match.riga.prov ? ' (' + match.riga.prov + ')' : '')
+        + (match.riga.cap ? ' ' + match.riga.cap : '')
+        + (match.riga.km ? '  •  ' + match.riga.km + ' km' : '');
     } else {
       if (!kmCRT || kmCRT <= 0) return null;
       // Minimo chilometrico configurato
