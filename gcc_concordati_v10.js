@@ -1659,6 +1659,11 @@
       .replace(/\bIN\b/g, 'I.')
       // Normalizza spazio dopo il punto: 'S. Pietro' → 'S.PIETRO'
       .replace(/([A-Z])\.\s+/g, '$1.')
+      // Vocali accentate → base (FORLÌ → FORLI, FORLI' → FORLI)
+      .replace(/[ÀÁÂÃ]/g, 'A').replace(/[ÈÉÊË]/g, 'E')
+      .replace(/[ÌÍÎÏ]/g, 'I').replace(/[ÒÓÔÕ]/g, 'O')
+      .replace(/[ÙÚÛÜ]/g, 'U')
+      .replace(/([AEIOU])'/g, '$1')    // FORLI' → FORLI
       .replace(/\s+/g, ' ')
       .trim();
     return u;
@@ -2245,16 +2250,15 @@
       'ov.onclick=function(){ov.remove();pn.remove();};'+
       '}'+
 
-      'var _pCSS="@page{size:A4 landscape;margin:8mm}body{font-family:Arial,sans-serif;margin:0;padding:8px}table{width:100%;border-collapse:collapse;font-size:9px}th{background:#1a5276;color:white;padding:4px 6px;text-align:left}td{padding:3px 6px;border-bottom:1px solid #eee;font-size:9px}tr:nth-child(even) td{background:#f8f8f8}h3{margin:6px 0 4px;font-size:13px}.section{margin-bottom:16px}.no-print,.btn-ins,.btn-vettori{display:none!important}.section-title{font-size:12px;font-weight:bold;margin-bottom:6px;padding:4px 8px;border-radius:4px}.section-title.ok{background:#d5f5e3;color:#1a5276}.section-title.warn{background:#fdebd0;color:#784212}";'+
       'function stampaConcordati(){'+
   'var sel=document.getElementById("print-sel").value;'+
   'var st=document.getElementById("sect-trovati");'+
   'var sm=document.getElementById("sect-mancanti");'+
   'var html=sel==="all"?(st?st.outerHTML:"")+(sm?sm.outerHTML:""):sel==="trovati"?(st?st.outerHTML:""):(sm?sm.outerHTML:"");'+
-  'var pw=window.open("","_blank","width=1200,height=800");'+
-  'var doc=pw.document;'+
-  'doc.open();doc.write("<html><head><meta charset=\"UTF-8\"><style>"+_pCSS+"</style></head><body>"+html+"</body></html>");doc.close();'+
-  'pw.focus();setTimeout(function(){pw.print();},400);'+
+  'var pw=window.open("","_blank");'+
+  'pw.document.write("<html><head><style>@page{size:A4 landscape;margin:8mm}body{font-family:Arial,sans-serif;padding:8px}table{width:100%;border-collapse:collapse;font-size:9px}th{padding:4px 6px;text-align:left;background:#1a5276;color:#fff}td{padding:3px 6px;border-bottom:1px solid #eee;font-size:9px}.no-print,.btn-ins,.btn-vettori{display:none}</style></head><body>"+html+"</body></html>");'+
+  'pw.document.close();'+
+  'pw.focus();setTimeout(function(){pw.print();},300);'+
 '}'+
 'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       /* ── data input auto-format DD/MM/YY ── */
