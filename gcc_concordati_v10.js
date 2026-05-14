@@ -247,6 +247,13 @@
       var ct     = g.containerType || { size:'40', isHC:false };
       var parsed = (g.indirizziParsed && g.indirizziParsed[0]) || null;
       var kmCRT  = g.crtMatch && g.crtMatch.riga ? parseFloat(g.crtMatch.riga.km || 0) : 0;
+      // Mancanti senza match CRT: cerca km nel tariffario CRT per il calcolo vettori KM
+      if (!kmCRT && g.indirizziParsed && g.indirizziParsed[0]) {
+        try {
+          var _cm2 = cercaCRT(g.indirizziParsed[0], g.porto, _gcc_crt_rows);
+          if (_cm2 && _cm2.riga) kmCRT = parseFloat(_cm2.riga.km || 0);
+        } catch(e) {}
+      }
       var kmBase = kmCRT;
       var isADR  = g.isADR || false;
       var results = [];
@@ -1607,6 +1614,7 @@
       // Articolati di SU (prima di SAN per evitare conflitti)
       .replace(/\bSULL[OA]?\b'?/g, 'S.')
       .replace(/\bSULLE\b/g, 'S.')
+      .replace(/\bS\//g, 'S.')            // S/Arno → S.Arno (notazione slash)
       .replace(/\bSUGLI\b/g, 'S.')
       .replace(/\bSUL\b/g, 'S.')
       // San/Santo/Santa
@@ -1708,12 +1716,18 @@
       }
     }
 
-    // ── 2. Solo CAP ───────────────────────────────────────────────
+    // ── 2b. Parole locality nelle righe con CAP corrispondente ──────
     if (capQ) {
-      var byCap = righePorto.filter(function(r) {
+      var byCapRows = righePorto.filter(function(r) {
         return (r.cap||'').replace(/\s/g,'') === capQ;
       });
-      if (byCap.length > 0) return ret(byCap[0], 'cap');
+      if (byCapRows.length > 0) {
+        if (locQ) {
+          var byCapLoc = trovaPerLoc(byCapRows, locQ);
+          if (byCapLoc.length > 0) return ret(byCapLoc[0], 'cap+loc');
+        }
+        return ret(byCapRows[0], 'cap');
+      }
     }
 
     return null;
@@ -2182,7 +2196,7 @@
       'var porto=(g.porto||"").toUpperCase();'+
       'var ct=g.containerType||{size:"40",isHC:false};'+
       'var ctL=ct.isHC?(ct.size==="20"?"20\' HC":"40\' HC"):(ct.size==="20"?"20\'":"40\'");'+
-      'var h="<div style=\\"background:linear-gradient(135deg,#d35400,#e67e22);color:white;padding:12px 18px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center\\"><b>\uD83D\uDE9A Confronto Vettori &#8212; "+porto+" &#8212; "+ctL+"</b><button onclick=\\"document.querySelectorAll(\\\\\\\'.gcc-vp-ov\\\\\\\').forEach(function(e){e.remove();})\\" style=\\"background:rgba(255,255,255,.2);border:none;color:white;cursor:pointer;font-size:18px;border-radius:4px;padding:1px 10px\\">&times;</button></div>";'+
+      'var h="<div style=\\"background:linear-gradient(135deg,#d35400,#e67e22);color:white;padding:12px 18px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center\\"><b>\uD83D\uDE9A Confronto Vettori &#8212; "+porto+" &#8212; "+ctL+"</b><button id=\\"gcc-vp-x\\" style=\\"background:rgba(255,255,255,.2);border:none;color:white;cursor:pointer;font-size:18px;border-radius:4px;padding:1px 10px\\">&times;</button></div>";'+
       'h+="<div style=\\"padding:16px\\">";'+
       'if(!res.length){'+
         'h+="<p style=\\"color:#aaa;text-align:center;padding:20px\\">Nessun vettore copre questa tratta o tariffe non caricate.</p>";'+
@@ -2200,8 +2214,8 @@
         '});'+
       '}'+
       'h+="</div>";'+
-      'pn.innerHTML=h;document.body.appendChild(ov);document.body.appendChild(pn);'+
-      'ov.onclick=function(){document.querySelectorAll(".gcc-vp-ov").forEach(function(e){e.remove();});pn.remove();};'+
+      'pn.innerHTML=h;pn.id="gcc-vp-panel";document.body.appendChild(ov);document.body.appendChild(pn);'+'document.getElementById("gcc-vp-x").onclick=function(){ov.remove();pn.remove();};'+
+      'ov.onclick=function(){ov.remove();pn.remove();};'+
       '}'+
 
       'function stampaConcordati(){'+
@@ -2209,8 +2223,11 @@
   'document.body.classList.remove("print-solo-trovati","print-solo-mancanti");'+
   'if(sel==="trovati")document.body.classList.add("print-solo-trovati");'+
   'if(sel==="mancanti")document.body.classList.add("print-solo-mancanti");'+
-  'window.print();'+
-  'setTimeout(function(){document.body.classList.remove("print-solo-trovati","print-solo-mancanti");},1000);'+
+  'requestAnimationFrame(function(){'+
+    'setTimeout(function(){window.print();'+
+      'setTimeout(function(){document.body.classList.remove("print-solo-trovati","print-solo-mancanti");},500);'+
+    '},150);'+
+  '});'+
 '}'+
 'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       /* ── data input auto-format DD/MM/YY ── */
