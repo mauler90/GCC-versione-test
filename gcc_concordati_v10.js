@@ -2229,7 +2229,7 @@
         'h+="<p style=\\"color:#aaa;text-align:center;padding:20px\\">Nessun vettore copre questa tratta o tariffe non caricate.</p>";'+
       '}else{'+
         'res.forEach(function(v,i){'+
-          'var addStr=v.addExtra.map(function(a){return" +\u20ac"+a.amt+"\u00a0"+a.label;}).join("");'+
+          'var addStr=(v.addExtra||[]).map(function(a){return" +\u20ac"+a.amt+"\u00a0"+a.label;}).join("");'+
           'var bg=i===0?"#fff8f0":"#f8f9fa";'+
           'var bd=i===0?"border:1px solid #f5a623":"border:1px solid #eee";'+
           'var medal=i===0?"\uD83E\uDD47":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":" "+(i+1);'+
@@ -2245,17 +2245,16 @@
       'ov.onclick=function(){ov.remove();pn.remove();};'+
       '}'+
 
+      'var _pCSS="@page{size:A4 landscape;margin:8mm}body{font-family:Arial,sans-serif;margin:0;padding:8px}table{width:100%;border-collapse:collapse;font-size:9px}th{background:#1a5276;color:white;padding:4px 6px;text-align:left}td{padding:3px 6px;border-bottom:1px solid #eee;font-size:9px}tr:nth-child(even) td{background:#f8f8f8}h3{margin:6px 0 4px;font-size:13px}.section{margin-bottom:16px}.no-print,.btn-ins,.btn-vettori{display:none!important}.section-title{font-size:12px;font-weight:bold;margin-bottom:6px;padding:4px 8px;border-radius:4px}.section-title.ok{background:#d5f5e3;color:#1a5276}.section-title.warn{background:#fdebd0;color:#784212}";'+
       'function stampaConcordati(){'+
   'var sel=document.getElementById("print-sel").value;'+
   'var st=document.getElementById("sect-trovati");'+
   'var sm=document.getElementById("sect-mancanti");'+
-  'var savedT="",savedM="";'+
-  'if(sel==="mancanti"&&st){savedT=st.innerHTML;st.innerHTML="";st.style.display="none";}'+
-  'if(sel==="trovati"&&sm){savedM=sm.innerHTML;sm.innerHTML="";sm.style.display="none";}'+
-  'setTimeout(function(){window.print();setTimeout(function(){'+
-    'if(savedT&&st){st.innerHTML=savedT;st.style.display="";}'+
-    'if(savedM&&sm){sm.innerHTML=savedM;sm.style.display="";}'+
-  '},600);},50);'+
+  'var html=sel==="all"?(st?st.outerHTML:"")+(sm?sm.outerHTML:""):sel==="trovati"?(st?st.outerHTML:""):(sm?sm.outerHTML:"");'+
+  'var pw=window.open("","_blank","width=1200,height=800");'+
+  'var doc=pw.document;'+
+  'doc.open();doc.write("<html><head><meta charset=\"UTF-8\"><style>"+_pCSS+"</style></head><body>"+html+"</body></html>");doc.close();'+
+  'pw.focus();setTimeout(function(){pw.print();},400);'+
 '}'+
 'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       /* ── data input auto-format DD/MM/YY ── */
