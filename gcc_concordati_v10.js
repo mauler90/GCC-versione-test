@@ -2043,14 +2043,14 @@
         '<td>'+g.traffic+'</td>'+
         '<td>'+g.porto.toUpperCase()+'</td>'+
         '<td id="mcosto_'+mgi+'" style="white-space:nowrap;line-height:1.6">'+costoCrtHtml+'</td>'+
+        '<td style="font-size:11px;color:#888" id="mnote_'+mgi+'"></td>'+
+        '<td style="color:#aaa;font-size:11px" id="mdata_'+mgi+'"></td>'+
         '<td class="no-print" style="white-space:nowrap">'+
           '<button title="Confronta vettori" '+
             'style="padding:3px 9px;background:#d35400;color:white;border:none;border-radius:3px;cursor:pointer;font-size:14px" '+
             'data-mgi="'+mgi+'" '+
             'onclick="showVettoriByKey(this.dataset.mgi)">&#x1F69A;<\/button>'+
         '</td>'+
-        '<td style="font-size:11px;color:#888" id="mnote_'+mgi+'"></td>'+
-        '<td style="color:#aaa;font-size:11px" id="mdata_'+mgi+'"></td>'+
         '<td class="no-print" style="white-space:nowrap">'+
           '<button data-mgi="'+mgi+'" class="btn-ins" '+
             'style="padding:3px 7px;background:#e67e22;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px">'+
@@ -2124,7 +2124,8 @@
         '#print-header{display:block!important}'+
         'tr:hover td{background:white!important}'+
         'th{background:#1a5276!important;color:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-        /* warn-section visibile in stampa (stampaConcordati la nasconde se necessario) */
+        'body.print-solo-trovati #sect-mancanti{display:none!important}'+
+        'body.print-solo-mancanti #sect-trovati{display:none!important}'+
       '}'+
       '#print-header{display:none;margin-bottom:16px;border-bottom:2px solid #1a5276;padding-bottom:8px}'+
       '#print-header h2{margin:0 0 2px;color:#1a5276;font-size:18px}'+
@@ -2168,7 +2169,7 @@
       'if(!window.opener||!window.opener._gccCalcolaVettori){alert("Dati vettori non disponibili. Ricarica lo script.");return;}'+
       'var loading=!!(window.opener._gcc_vettori_loading);'+
       'if(loading){alert("Vettori in caricamento, attendi un momento e riprova.");return;}'+
-      'if(!(window.opener._gcc_vettori_reg||[]).length){alert("Nessun vettore configurato. Usa Gestisci Vettori.");return;}'+
+      'if(!_vettoriCount){alert("Nessun vettore configurato.\\nUsa Gestisci Vettori e poi riapri i concordati.");return;}'+
       'var groups=window.opener._gccVettoriGroups||[];'+
       'var g=null;for(var _i=0;_i<groups.length;_i++){if(groups[_i]&&(groups[_i].gKey===key||String(_i)===String(key))){g=groups[_i];break;}}'+
       'if(!g){alert("Gruppo non trovato. Riapri i concordati.");return;}'+
@@ -2205,12 +2206,11 @@
 
       'function stampaConcordati(){'+
   'var sel=document.getElementById("print-sel").value;'+
-  'var st=document.getElementById("sect-trovati");'+
-  'var sm=document.getElementById("sect-mancanti");'+
-  'if(st)st.style.display=(sel==="mancanti"?"none":"");'+
-  'if(sm)sm.style.display=(sel==="trovati"?"none":"");'+
+  'document.body.classList.remove("print-solo-trovati","print-solo-mancanti");'+
+  'if(sel==="trovati")document.body.classList.add("print-solo-trovati");'+
+  'if(sel==="mancanti")document.body.classList.add("print-solo-mancanti");'+
   'window.print();'+
-  'setTimeout(function(){if(st)st.style.display="";if(sm)sm.style.display="";},800);'+
+  'setTimeout(function(){document.body.classList.remove("print-solo-trovati","print-solo-mancanti");},1000);'+
 '}'+
 'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       /* ── data input auto-format DD/MM/YY ── */
