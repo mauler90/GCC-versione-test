@@ -246,24 +246,50 @@
       var porto  = g.porto || '';
       var ct     = g.containerType || { size:'40', isHC:false };
       var parsed = (g.indirizziParsed && g.indirizziParsed[0]) || null;
+      var loc    = (parsed && parsed.loc) || '';
       var kmCRT  = g.crtMatch && g.crtMatch.riga ? parseFloat(g.crtMatch.riga.km || 0) : 0;
-      // Mancanti senza match CRT: cerca km nel tariffario CRT per il calcolo vettori KM
-      if (!kmCRT && g.indirizziParsed && g.indirizziParsed[0]) {
+      // Per KM carrier su route mancanti: cerca km nel CRT
+      if (!kmCRT && parsed) {
         try {
-          var _cm2 = cercaCRT(g.indirizziParsed[0], g.porto, _gcc_crt_rows);
+          var _cm2 = cercaCRT(parsed, porto, _gcc_crt_rows);
           if (_cm2 && _cm2.riga) kmCRT = parseFloat(_cm2.riga.km || 0);
         } catch(e) {}
       }
       var kmBase = kmCRT;
       var isADR  = g.isADR || false;
+
+      // Diagnostico: se registry vuoto o tariffe vuote, segnala
+      if (!_gcc_vettori_reg.length) {
+        return JSON.stringify([{_diag:'NO_REG', msg:'Registry vettori vuoto. Apri Gestisci Vettori.'}]);
+      }
+      var _totRows = 0;
+      _gcc_vettori_reg.forEach(function(v){ _totRows += (_gcc_vettori_tariffe[v.id]||[]).length; });
+      if (!_totRows) {
+        return JSON.stringify([{_diag:'NO_TARIFFE', msg:'Tariffe non in memoria ('+_gcc_vettori_reg.length+' vettori senza tariffe). Apri Gestisci Vettori per ricaricarle.'}]);
+      }
+
       var results = [];
+      var diagNulls = [];
       _gcc_vettori_reg.forEach(function(v) {
         var r = _calcolaVettore(v, parsed, porto, ct, kmCRT, isADR, kmBase);
         if (r) results.push(r);
+        else {
+          var rows = _gcc_vettori_tariffe[v.id]||[];
+          var reason = v.porti.indexOf(porto)<0 ? 'porto '+porto+' non coperto'
+            : !rows.length ? 'tariffe vuote'
+            : v.tipo!=='localita'&&!kmCRT ? 'km=0 (mancante nel CRT)'
+            : 'no match tariffa';
+          diagNulls.push(v.nome+': '+reason);
+        }
       });
       results.sort(function(a, b){ return a.totale - b.totale; });
+      if (!results.length) {
+        return JSON.stringify([{_diag:'NO_MATCH', loc:loc, porto:porto, km:kmCRT, details:diagNulls}]);
+      }
+      // Aggiungi loc/porto ai risultati per il titolo del pannello
+      results.forEach(function(r){ r._loc=loc; });
       return JSON.stringify(results);
-    } catch(e) { return '[]'; }
+    } catch(e) { return '[{"_diag":"ERR","msg":"'+e.message+'"}]'; }
   };
 
   function aggiornaStato() {
@@ -2196,7 +2222,8 @@
       'var porto=(g.porto||"").toUpperCase();'+
       'var ct=g.containerType||{size:"40",isHC:false};'+
       'var ctL=ct.isHC?(ct.size==="20"?"20\' HC":"40\' HC"):(ct.size==="20"?"20\'":"40\'");'+
-      'var h="<div style=\\"background:linear-gradient(135deg,#d35400,#e67e22);color:white;padding:12px 18px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center\\"><b>\uD83D\uDE9A Confronto Vettori &#8212; "+porto+" &#8212; "+ctL+"</b><button id=\\"gcc-vp-x\\" style=\\"background:rgba(255,255,255,.2);border:none;color:white;cursor:pointer;font-size:18px;border-radius:4px;padding:1px 10px\\">&times;</button></div>";'+
+      'var _loc=(res[0]&&res[0]._loc)||(g.indirizziParsed&&g.indirizziParsed[0]?g.indirizziParsed[0].loc:"");'+
+      'var h="<div style=\\"background:linear-gradient(135deg,#d35400,#e67e22);color:white;padding:12px 18px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center\\"><b>\uD83D\uDE9A Confronto Vettori &#8212; "+(_loc?_loc+" &#8212; ":"")+porto+" &#8212; "+ctL+"</b><button id=\\"gcc-vp-x\\" style=\\"background:rgba(255,255,255,.2);border:none;color:white;cursor:pointer;font-size:18px;border-radius:4px;padding:1px 10px\\">&times;</button></div>";'+
       'h+="<div style=\\"padding:16px\\">";'+
       'if(!res.length){'+
         'h+="<p style=\\"color:#aaa;text-align:center;padding:20px\\">Nessun vettore copre questa tratta o tariffe non caricate.</p>";'+
@@ -2220,14 +2247,15 @@
 
       'function stampaConcordati(){'+
   'var sel=document.getElementById("print-sel").value;'+
-  'document.body.classList.remove("print-solo-trovati","print-solo-mancanti");'+
-  'if(sel==="trovati")document.body.classList.add("print-solo-trovati");'+
-  'if(sel==="mancanti")document.body.classList.add("print-solo-mancanti");'+
-  'requestAnimationFrame(function(){'+
-    'setTimeout(function(){window.print();'+
-      'setTimeout(function(){document.body.classList.remove("print-solo-trovati","print-solo-mancanti");},500);'+
-    '},150);'+
-  '});'+
+  'var st=document.getElementById("sect-trovati");'+
+  'var sm=document.getElementById("sect-mancanti");'+
+  'var savedT="",savedM="";'+
+  'if(sel==="mancanti"&&st){savedT=st.innerHTML;st.innerHTML="";st.style.display="none";}'+
+  'if(sel==="trovati"&&sm){savedM=sm.innerHTML;sm.innerHTML="";sm.style.display="none";}'+
+  'setTimeout(function(){window.print();setTimeout(function(){'+
+    'if(savedT&&st){st.innerHTML=savedT;st.style.display="";}'+
+    'if(savedM&&sm){sm.innerHTML=savedM;sm.style.display="";}'+
+  '},600);},50);'+
 '}'+
 'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       /* ── data input auto-format DD/MM/YY ── */
