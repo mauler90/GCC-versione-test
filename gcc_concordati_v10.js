@@ -162,7 +162,7 @@
   }
 
   function _calcolaVettore(v, parsed, porto, ct, kmCRT, isADR, kmBase) {
-    if (v.porti.indexOf(porto) < 0) return null;
+    if (v.porti.map(function(p){return p.toUpperCase();}).indexOf(porto.toUpperCase()) < 0) return null;
     var rows = _gcc_vettori_tariffe[v.id] || [];
     if (!rows.length) return null;
     var add = v.add || {};
@@ -243,7 +243,7 @@
   window._gccCalcolaVettori = function(g_str) {
     try {
       var g = JSON.parse(g_str);
-      var porto  = g.porto || '';
+      var porto  = (g.porto || '').toUpperCase();  // sempre uppercase per match con v.porti
       var ct     = g.containerType || { size:'40', isHC:false };
       var parsed = (g.indirizziParsed && g.indirizziParsed[0]) || null;
       var loc    = (parsed && parsed.loc) || '';
@@ -1679,12 +1679,13 @@
       det = parseIndirizzoDettaglio(indirizzo || '');
     }
     var righePorto = crtRows.filter(function(r) {
-      return (r.porto || '') === porto && !isLocalitaIntermedia(r.localita);
+      return (r.porto || '').toUpperCase() === porto.toUpperCase() && !isLocalitaIntermedia(r.localita);
     });
     if (righePorto.length === 0) {
-      // Fallback: tutti i porti ma ancora escludi intermedie
-      righePorto = crtRows.filter(function(r) { return !isLocalitaIntermedia(r.localita); });
+      // Fallback SOLO su righe senza porto specificato (mai mischiare Livorno con La Spezia)
+      righePorto = crtRows.filter(function(r) { return !r.porto && !isLocalitaIntermedia(r.localita); });
     }
+    if (righePorto.length === 0) return null;
 
     function lbl(r) { return r.localita + (r.cap ? ' ' + r.cap : '') + (r.prov ? ' (' + r.prov + ')' : ''); }
     function ret(r, m) { return { riga: r, metodo: m, label: lbl(r) }; }
@@ -1940,7 +1941,7 @@
     mGruppiM.forEach(function(g) {
       var indirizzi = g.indirizzi || [];
       var isDoppia  = indirizzi.length > 1 && (indirizzi[1] || '').trim() !== '';
-      var porto     = g.porto || '';
+      var porto     = (g.porto || '').toUpperCase();
 
       // Chiave KM per questa coppia di indirizzi
       var kmKey = [norm(indirizzi[0]||''), norm(indirizzi[1]||''), norm(porto)].join('|||');
@@ -2664,7 +2665,7 @@
         'kmTratte[g.kmKey]=km;'+
         'try{localStorage.setItem(_LS_KM_TRATTE,JSON.stringify(kmTratte));}catch(e){}'+
         // Cerca nel CRT la riga con KM piu vicini
-        'var porto=g.porto||"";'+
+        'var porto=(g.porto||"").toUpperCase();'+
         'var righePorto=_crtRowsPopup.filter(function(r){return(r.porto||"")===porto;});'+
         'if(!righePorto.length)righePorto=_crtRowsPopup;'+
         'var rigaKm=null;var diffMin=Infinity;'+
