@@ -2230,19 +2230,32 @@
       'var _loc=(res[0]&&res[0]._loc)||(g.indirizziParsed&&g.indirizziParsed[0]?g.indirizziParsed[0].loc:"");'+
       'var h="<div style=\\"background:linear-gradient(135deg,#d35400,#e67e22);color:white;padding:12px 18px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center\\"><b>\uD83D\uDE9A Confronto Vettori &#8212; "+(_loc?_loc+" &#8212; ":"")+porto+" &#8212; "+ctL+"</b><button id=\\"gcc-vp-x\\" style=\\"background:rgba(255,255,255,.2);border:none;color:white;cursor:pointer;font-size:18px;border-radius:4px;padding:1px 10px\\">&times;</button></div>";'+
       'h+="<div style=\\"padding:16px\\">";'+
-      'if(!res.length){'+
-        'h+="<p style=\\"color:#aaa;text-align:center;padding:20px\\">Nessun vettore copre questa tratta o tariffe non caricate.</p>";'+
+      'if(res.length&&res[0]&&res[0]._diag){'+
+        'var _d=res[0];'+
+        'if(_d._diag==="NO_REG"||_d._diag==="NO_TARIFFE"){'+
+          'h+="<div style=\\"color:#e74c3c;padding:16px;text-align:center\\">\u26A0 "+_d.msg+"</div>";'+
+        '}else if(_d._diag==="NO_MATCH"){'+
+          'h+="<p style=\\"color:#888;margin-bottom:8px\\">Nessun vettore copre questa tratta.</p>";'+
+          'h+="<ul style=\\"font-size:11px;color:#aaa;list-style:none;padding:0\\">";'+
+          '(_d.details||[]).forEach(function(x){h+="<li>&#x2716; "+x+"</li>";});'+
+          'h+="</ul>"+(_d.km?"<p style=\\"font-size:11px;color:#aaa\\">KM trovati: "+_d.km+"</p>":"");'+
+        '}else{'+
+          'h+="<p style=\\"color:#888\\">"+ (_d.msg||JSON.stringify(_d))+"</p>";'+
+        '}'+
+      '}else if(!res.length){'+
+        'h+="<p style=\\"color:#aaa;text-align:center;padding:20px\\">Nessun vettore trovato.</p>";'+
       '}else{'+
         'res.forEach(function(v,i){'+
+          'if(!v||v._diag)return;'+
           'var addStr=(v.addExtra||[]).map(function(a){return" +\u20ac"+a.amt+"\u00a0"+a.label;}).join("");'+
           'var bg=i===0?"#fff8f0":"#f8f9fa";'+
           'var bd=i===0?"border:1px solid #f5a623":"border:1px solid #eee";'+
-          'var medal=i===0?"\uD83E\uDD47":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":" "+(i+1);'+
+          'var medal=i===0?"\uD83E\uDD47":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":""+(i+1)+".";'+
           'h+="<div style=\\"display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;margin-bottom:6px;background:"+bg+";"+bd+"\\">";'+
           'h+="<span style=\\"font-size:18px;width:28px;text-align:center\\">"+medal+"</span>";'+
-          'h+="<span style=\\"font-weight:bold;min-width:110px;font-size:13px\\">"+v.nome+"</span>";'+
-          'h+="<span style=\\"flex:1;font-size:12px;color:#555\\">\u20ac"+v.costoBase+(v.fuelAmt>0?" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%)"+"":"")+" = \u20ac"+v.subtotale+addStr+"</span>";'+
-          'h+="<span style=\\"font-size:16px;font-weight:bold;color:#27ae60\\">\u20ac"+v.totale+"</span></div>";'+
+          'h+="<span style=\\"font-weight:bold;min-width:120px;font-size:13px\\">"+( v.nome||"?")+ "</span>";'+
+          'h+="<span style=\\"flex:1;font-size:12px;color:#555\\">\u20ac"+(v.costoBase||0)+(v.fuelAmt>0?" +\u20ac"+v.fuelAmt+" fuel ("+v.fuelPerc+"%)":"")+(v.subtotale!==v.costoBase?" = \u20ac"+v.subtotale:"")+addStr+"</span>";'+
+          'h+="<span style=\\"font-size:16px;font-weight:bold;color:#27ae60\\">\u20ac"+(v.totale||0)+"</span></div>";'+
         '});'+
       '}'+
       'h+="</div>";'+
@@ -2254,11 +2267,15 @@
   'var sel=document.getElementById("print-sel").value;'+
   'var st=document.getElementById("sect-trovati");'+
   'var sm=document.getElementById("sect-mancanti");'+
-  'var html=sel==="all"?(st?st.outerHTML:"")+(sm?sm.outerHTML:""):sel==="trovati"?(st?st.outerHTML:""):(sm?sm.outerHTML:"");'+
-  'var pw=window.open("","_blank");'+
-  'pw.document.write("<html><head><style>@page{size:A4 landscape;margin:8mm}body{font-family:Arial,sans-serif;padding:8px}table{width:100%;border-collapse:collapse;font-size:9px}th{padding:4px 6px;text-align:left;background:#1a5276;color:#fff}td{padding:3px 6px;border-bottom:1px solid #eee;font-size:9px}.no-print,.btn-ins,.btn-vettori{display:none}</style></head><body>"+html+"</body></html>");'+
-  'pw.document.close();'+
-  'pw.focus();setTimeout(function(){pw.print();},300);'+
+  'var parts=[];'+
+  'if(sel==="all"||sel==="trovati")parts.push(st?st.outerHTML:"");'+
+  'if(sel==="all")parts.push("<div style=\\"height:20px\\"></div>");'+
+  'if(sel==="all"||sel==="mancanti")parts.push(sm?sm.outerHTML:"");'+
+  'var now=new Date();var ds=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear();'+
+  'var hdr="<div style=\\"border-bottom:2px solid #1a5276;margin-bottom:14px;padding-bottom:6px;display:flex;justify-content:space-between;align-items:flex-end\\"><div><h2 style=\\"margin:0;color:#1a5276;font-size:16px\\">Listino Concordati</h2><p style=\\"margin:2px 0 0;font-size:11px;color:#666\\">Stampato il "+ds+"</p></div><p style=\\"margin:0;font-size:11px;color:#888\\">Savino Del Bene S.p.A.</p></div>";'+
+  'var pw=window.open("","gcc_print","width=1400,height=900,toolbar=0,menubar=0,location=0,scrollbars=1");'+
+  'pw.document.write("<html><head><title>Listino Concordati</title><style>@page{size:A4 landscape;margin:8mm}body{font-family:Arial,sans-serif;padding:10px;font-size:10px}table{width:100%;border-collapse:collapse;font-size:9px}th{padding:4px 6px;text-align:left;background:#1a5276;color:#fff;font-size:9px}td{padding:3px 6px;border-bottom:1px solid #eee;font-size:9px}.no-print,.btn-ins,.btn-vettori{display:none!important}.section{margin-bottom:20px;padding-bottom:8px}.section-title{font-weight:bold;font-size:11px;margin:0 0 6px;padding:4px 8px;border-radius:3px}.section-title.ok{background:#d5f5e3;color:#1a5276}.section-title.warn{background:#fdebd0;color:#784212}.badge-container{display:inline-block}</style></head><body>"+hdr+parts.join("") +"</body></html>");'+
+  'pw.document.close();pw.focus();setTimeout(function(){pw.print();},400);'+
 '}'+
 'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       /* ── data input auto-format DD/MM/YY ── */
