@@ -700,7 +700,15 @@
   }
   function parseContainerType(raw){
     var clean=raw.replace(/\[.*?\]/g,'').trim().toLowerCase();
-    return { size:clean.startsWith('20')?'20':'40', isHC:clean.includes('high cube')||clean.includes('high-cube'), clean:clean };
+    var s=clean.startsWith('20')?'20':'40';
+    // Reefer HC / Reefer High Cube
+    var isRH = /\b(rh|rhc|reefer\s*hc|reefer\s*high)/.test(clean);
+    var isReefer = isRH || clean.includes('reefer') || /\b(rf|re)\b/.test(clean);
+    var isHC = isRH || clean.includes('high cube') || clean.includes('high-cube') ||
+               /\b(hc|hq|ht)\b/.test(clean);
+    var isOpenTop  = clean.includes('open top')  || /\bot\b/.test(clean);
+    var isFlatRack = clean.includes('flat rack')  || clean.includes('flat-rack') || /\bfr\b/.test(clean);
+    return { size:s, isHC:isHC, isReefer:isReefer, isOpenTop:isOpenTop, isFlatRack:isFlatRack, clean:clean };
   }
   function parsePorto(raw){ var m=raw.match(/\[([^\]]+)\]/); return m?m[1].toLowerCase():norm(raw); }
   function parseNome(raw){ return raw.replace(/^\[\d+\]\s*/,'').trim(); }
@@ -1790,7 +1798,11 @@
   function calcolaCRT(rigaCRT, containerType, addizionali, nExtraStops, isADR, kmBase) {
     var ct    = containerType;
     var porto = (rigaCRT && rigaCRT.porto) || '';
-    var costoBase = parseFloat(ct.isHC ? (rigaCRT.costo_40 || 0) : (ct.size === '20' ? (rigaCRT.costo_20 || 0) : (rigaCRT.costo_40 || 0)));
+    var costoBase = parseFloat(
+      (ct.isHC) ? (rigaCRT.costo_hc || rigaCRT.costo_40 || 0)
+    : ct.size === '20' ? (rigaCRT.costo_20 || 0)
+    : (rigaCRT.costo_40 || 0)
+    );
     if (isNaN(costoBase) || costoBase === 0) return null;
 
     costoBase = Math.round(costoBase);
@@ -1813,6 +1825,14 @@
     // ADR — se segnalato sull'ordine TMS
     if (isADR && parseFloat(add.adr || 0) > 0)
       addExtra.push({ label: 'ADR', amt: Math.round(parseFloat(add.adr)) });
+
+    // Allaccio RF — automatico se container è reefer e addizionale configurato
+    if (ct.isReefer && parseFloat(add.reefer_perc || 0) > 0) {
+      var _rfPerc = parseFloat(add.reefer_perc);
+      var _rfBase = costoBase * (1 + parseFloat(add.fuel_perc || 0) / 100);
+      var _rfAmt  = Math.max(Math.round(_rfBase * _rfPerc / 100), parseFloat(add.reefer_min || 0));
+      if (_rfAmt > 0) addExtra.push({ label: 'Allaccio RF ' + _rfPerc + '%', amt: _rfAmt });
+    }
 
     // Sosta Notte — automatica se km >= 750
     var kmVal = parseFloat(kmBase || rigaCRT.km || 0);
@@ -1852,8 +1872,12 @@
 
     // ── Helper: etichetta equipment semplificata ──
     function equipLabel(ct){
-      if(ct.isHC) return ct.size==='20'?'20\' HC':'40\' HC';
-      return ct.size==='20'?'20\'':'40\'';
+      var s=ct.size+"'";
+      if(ct.isReefer)  s+=' RF';
+      if(ct.isHC)      s+=' HC';
+      if(ct.isOpenTop) s+=' OT';
+      if(ct.isFlatRack)s+=' FR';
+      return s;
     }
 
     // ── Raggruppa trovati per tratta + tipo equipment ──
@@ -1862,7 +1886,9 @@
     var gruppiOrdine = [];
     trovati.forEach(function(r){
       var m=r.match, ct=r.containerType;
-      var costoB = ct.isHC ? (m.costo_40||'') : (ct.size==='20' ? (m.costo_20||'') : (m.costo_40||''));
+      // Reefer e Open Top usano stesso chassis di prezzo (20' o 40')
+      var costoB = (ct.isHC||ct.isReefer&&ct.isHC) ? (m.costo_hc||m.costo_40||'')
+                 : ct.size==='20' ? (m.costo_20||'') : (m.costo_40||'');
 
       // Se il listino matcha la tratta ma non ha il costo per questa taglia → mancanti
       if(costoB===''){
@@ -1873,7 +1899,7 @@
       var chiave = [norm(m.luogo_1),norm(m.luogo_2),norm(m.delivery_place),
                     norm(m.porto_riferimento),norm(m.traffic_type),norm(m.committente)].join('||');
       // gKey include anche la taglia → 20' e 40' HC sono gruppi separati
-      var equipKey = ct.size+(ct.isHC?'hc':'');
+      var equipKey = ct.size+(ct.isHC?'hc':'')+(ct.isReefer?'rf':'')+(ct.isOpenTop?'ot':'')+(ct.isFlatRack?'fr':'');
       var gKey = chiave + '||' + equipKey + '||' + costoB;
       if(!gruppiMap[gKey]){
         var extras=[];
@@ -1920,7 +1946,7 @@
       var mappa = {};
       mancanti.forEach(function(r){
         var ct = r.containerType;
-        var eqKey = ct.size + (ct.isHC ? 'hc' : '');
+        var eqKey = ct.size+(ct.isHC?'hc':'')+(ct.isReefer?'rf':'')+(ct.isOpenTop?'ot':'')+(ct.isFlatRack?'fr':'');
         var mKey = [norm(r.indirizzi[0]||''),norm(r.indirizzi[1]||''),
                     norm(r.delivery_place),norm(r.porto),
                     norm(r.traffic),norm(r.committente),eqKey].join('||');
