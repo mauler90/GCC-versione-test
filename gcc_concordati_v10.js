@@ -2237,8 +2237,9 @@
       'if(!_vettoriCount){alert("Nessun vettore configurato.\\nUsa Gestisci Vettori e poi riapri i concordati.");return;}'+
       'var g=null;'+
       'if(tipo==="t"){'+
+        'var _ti=parseInt(key);'+
         'var _tg=window.opener._gccTrovatiGroups||[];'+
-        'for(var _i=0;_i<_tg.length;_i++){if(_tg[_i]&&(_tg[_i]._gKey===key||_tg[_i].gKey===key)){g=_tg[_i];break;}}'+
+        'if(!isNaN(_ti)&&_ti<_tg.length)g=_tg[_ti];'+
       '}else{'+
         'var _mi=parseInt(key);'+
         'var _mg=window.opener._gccMancantiGroups||[];'+
