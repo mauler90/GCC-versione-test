@@ -173,13 +173,25 @@
 
     var matchInfo = '';  // fonte usata per il calcolo (per il pannello)
     if (v.tipo === 'localita') {
-      var match = cercaCRT(parsed, porto, rows);
+      var match = parsed ? cercaCRT(parsed, porto, rows) : null;
+      // Per multi-stop con km inserito: cerca per km nel tariffario del vettore
+      if (!match && kmCRT > 0) {
+        var _sortedR = rows.slice().sort(function(a,b){ return parseFloat(a.km||0)-parseFloat(b.km||0); });
+        var _byKm = null;
+        for (var _ri=0; _ri<_sortedR.length; _ri++) {
+          if (parseFloat(_sortedR[_ri].km||0) >= kmCRT) { _byKm=_sortedR[_ri]; break; }
+        }
+        if (!_byKm && _sortedR.length) _byKm = _sortedR[_sortedR.length-1];
+        if (_byKm) match = { riga: _byKm, _kmBased: true };
+      }
       if (!match) return null;
       base20 = Math.round(parseFloat(match.riga.c20 || 0));
       base40 = Math.round(parseFloat(match.riga.c40 || match.riga.c20 || 0));
+      var _kmSuffix = match._kmBased
+        ? '  \u2022  ' + (match.riga.km||'') + ' km (usata distanza in km)'
+        : (match.riga.km ? '  \u2022  ' + match.riga.km + ' km' : '');
       matchInfo = (match.riga.localita || '') + (match.riga.prov ? ' (' + match.riga.prov + ')' : '')
-        + (match.riga.cap ? ' ' + match.riga.cap : '')
-        + (match.riga.km ? '  •  ' + match.riga.km + ' km' : '');
+        + (match.riga.cap ? ' ' + match.riga.cap : '') + _kmSuffix;
     } else {
       if (!kmCRT || kmCRT <= 0) return null;
       // Minimo chilometrico configurato
@@ -203,7 +215,8 @@
       if (!found) return null;
       base20 = Math.round(parseFloat(String(found.c20||'0').replace(/[^0-9.,]/g,'').replace(',','.')) || 0);
       base40 = Math.round(parseFloat(String(found.c40||found.c20||'0').replace(/[^0-9.,]/g,'').replace(',','.')) || 0);
-      matchInfo = effectiveKm + ' km' + (kmMin > 0 && kmCRT < kmMin ? ' (min. ' + kmMin + ' km)' : '');
+      var _kmNote = kmMin > 0 && kmCRT < kmMin ? ' — min. ' + kmMin + ' km' : '';
+      matchInfo = effectiveKm + ' km' + _kmNote;
     }
 
     var costoBase = ct.isHC ? base40 : (ct.size === '20' ? base20 : base40);
@@ -258,17 +271,24 @@
       var loc    = (parsed && parsed.loc) || '';
       var kmCRT  = g.crtMatch && g.crtMatch.riga ? parseFloat(g.crtMatch.riga.km || 0) : 0;
       // Per KM carrier su route mancanti: cerca km nel CRT
+      var kmFromCRT = false;
       if (!kmCRT && parsed) {
         try {
           var _cm2 = cercaCRT(parsed, porto, _gcc_crt_rows);
-          if (_cm2 && _cm2.riga) kmCRT = parseFloat(_cm2.riga.km || 0);
+          if (_cm2 && _cm2.riga && _cm2.riga.km) {
+            kmCRT = parseFloat(_cm2.riga.km);
+            kmFromCRT = true;
+          }
         } catch(e) {}
       }
+      // km manuale già applicato sopra
       var kmBase = kmCRT;
       var isADR  = g.isADR || false;
       // Multi-stop: per carrier KM il km non può essere un singolo stop
       var nStops = g.indirizziParsed ? g.indirizziParsed.length : 1;
       var isMultiStop = nStops > 1;
+      var kmManuale = parseFloat(g.kmManuale || 0);
+      if (kmManuale > 0) { kmCRT = kmManuale; kmBase = kmManuale; }
 
       // Diagnostico: se registry vuoto o tariffe vuote, segnala
       if (!_gcc_vettori_reg.length) {
@@ -283,8 +303,8 @@
       var results = [];
       var diagNulls = [];
       _gcc_vettori_reg.forEach(function(v) {
-        // Route multi-stop: nessun carrier (km non affidabile per nessun tipo)
-        if (isMultiStop) return;
+        // Route multi-stop: salta SOLO se km non inserito manualmente
+        if (isMultiStop && !kmManuale) return;
         var r = _calcolaVettore(v, parsed, porto, ct, kmCRT, isADR, kmBase, isReefer);
         if (r) results.push(r);
         else {
@@ -297,8 +317,8 @@
         }
       });
       results.sort(function(a, b){ return a.totale - b.totale; });
-      if (isMultiStop && !results.length) {
-        return JSON.stringify([{_diag:'MULTI_STOP', msg:'Route con '+nStops+' fermate: i costi vettori sono disponibili solo su tratte singola destinazione. Per route multi-stop usa la colonna Inserisci KM.'}]);
+      if (isMultiStop && !kmManuale && !results.length) {
+        return JSON.stringify([{_diag:'MULTI_STOP', msg:'Route con '+nStops+' fermate: inserisci i KM totali del viaggio per calcolare il costo vettori.'}]);
       }
       if (!results.length) {
         return JSON.stringify([{_diag:'NO_MATCH', loc:loc, porto:porto, km:kmCRT, details:diagNulls}]);
@@ -706,8 +726,12 @@
     var isReefer = isRH || clean.includes('reefer') || /\b(rf|re)\b/.test(clean);
     var isHC = isRH || clean.includes('high cube') || clean.includes('high-cube') ||
                /\b(hc|hq|ht)\b/.test(clean);
-    var isOpenTop  = clean.includes('open top')  || /\bot\b/.test(clean);
-    var isFlatRack = clean.includes('flat rack')  || clean.includes('flat-rack') || /\bfr\b/.test(clean);
+    var isOTHC     = /\b(othc|ot\s*hc|open\s*top\s*high)/.test(clean);
+    var isOpenTop  = isOTHC || clean.includes('open top') || /\bot\b/.test(clean);
+    if(isOTHC) isHC = true;  // Open Top High Cube → anche HC
+    var isFlatRack = clean.includes('flat rack') || clean.includes('flat-rack') || /\bfr\b/.test(clean);
+    var isFlatHC   = /\b(frhc|fr\s*hc|flat\s*rack\s*high)/.test(clean);
+    if(isFlatHC) { isFlatRack=true; isHC=true; }
     return { size:s, isHC:isHC, isReefer:isReefer, isOpenTop:isOpenTop, isFlatRack:isFlatRack, clean:clean };
   }
   function parsePorto(raw){ var m=raw.match(/\[([^\]]+)\]/); return m?m[1].toLowerCase():norm(raw); }
