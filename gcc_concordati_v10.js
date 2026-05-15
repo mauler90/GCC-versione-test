@@ -2782,8 +2782,13 @@
           '(riga2?"<span style=\\"color:#7f8c8d;font-size:11px\\"> &nbsp;"+riga2+"</span>":"")+'+
           '"<br><span style=\\"font-size:10px;color:#2980b9;font-style:italic\\">&#x1F4CC; "+label+"</span>";'+
         'var td=document.getElementById("mcosto_"+_kmMgi);'+
-        'var td=document.getElementById("mcosto_"+_kmMgi);'+
         'if(td)td.innerHTML=costoCrtHtml;'+
+        '_mGruppiM[_kmMgi].kmManuale=km;'+
+        '_mGruppiM[_kmMgi].crtMatch={riga:rigaKm};'+
+        'if(window.opener&&window.opener._gccMancantiGroups&&_kmMgi<window.opener._gccMancantiGroups.length){'+
+          'window.opener._gccMancantiGroups[_kmMgi].kmManuale=km;'+
+          'window.opener._gccMancantiGroups[_kmMgi].crtMatch={riga:rigaKm};'+
+        '}'+
         'chiudiModaleKm();'+
       '}'+
 
