@@ -2554,11 +2554,13 @@
         'var g=_gruppi[gi];'+
         'var desc=g.indirizzi.join(" \u2192 ")+" \u2014 "+g.delivery_place+" \u2014 "+g.porto.toUpperCase();'+
         'document.getElementById("modale-sub").textContent=desc;'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note","km_percorrenza"];'+
         'flds.forEach(function(f){'+
           'var el=document.getElementById("f_"+f);'+
           'if(el)el.value=(rigaLS&&rigaLS[f])?rigaLS[f]:"";'+
         '});'+
+        'var elKm=document.getElementById("f_km_percorrenza");'+
+        'if(elKm)elKm.value=(rigaLS&&rigaLS.km_percorrenza)?rigaLS.km_percorrenza:"";'+
         'var elData=document.getElementById("f_data_validita");'+
         'elData.value=(rigaLS&&rigaLS.data_validita)?rigaLS.data_validita:_dataOggi;'+
         'var elOp2=document.getElementById("f_operatore");if(elOp2)elOp2.value=(rigaLS&&rigaLS.operatore)||"";'+
@@ -2883,6 +2885,10 @@
             '<label>S. Notte (&euro;)<input type="number" id="f_s_notte" placeholder="vuoto = no"><\/label>'+
             '<label>Reefer (%)<input type="number" id="f_allaccio_rf" min="0" step="0.1" placeholder="vuoto = no"><\/label>'+
             '<label>ADR (&euro;)<input type="number" id="f_adr" placeholder="vuoto = no"><\/label>'+
+            '<label class="full" style="background:#eaf4fb;padding:8px;border-radius:6px;border:1px solid #aed6f1;margin-top:4px">'+
+              '&#x1F4CD; KM percorrenza viaggio'+
+              '<input type="number" id="f_km_percorrenza" min="0" step="1" style="margin-top:4px" placeholder="vuoto = ignora | richiesto per calcolo vettori su multi-stop">'+
+            '<\/label>'+
             '<label class="full">Note<input type="text" id="f_note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
           '<div class="fuel-row">'+
