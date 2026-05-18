@@ -194,25 +194,37 @@
         + (match.riga.cap ? ' ' + match.riga.cap : '') + _kmSuffix;
     } else {
       if (!kmCRT || kmCRT <= 0) return null;
+      // Per km_vecchio: ottieni km dal vecchio distanziere CRT
+      var effectiveKmBase = kmCRT;
+      if (v.tipo === 'km_vecchio' && parsed && _gcc_km_vecchio_rows.length) {
+        try {
+          var _kvMatch = cercaCRT(parsed, porto, _gcc_km_vecchio_rows);
+          if (_kvMatch && _kvMatch.riga && _kvMatch.riga.km) {
+            effectiveKmBase = parseFloat(_kvMatch.riga.km);
+            matchInfo = (_kvMatch.riga.localita || '') + (_kvMatch.riga.prov ? ' (' + _kvMatch.riga.prov + ')' : '')
+              + (_kvMatch.riga.cap ? ' ' + _kvMatch.riga.cap : '')
+              + '  \u2022  ' + effectiveKmBase + ' km (distanziere vecchio)';
+          }
+        } catch(e) {}
+      }
       // Minimo chilometrico configurato
       var kmMin  = parseFloat(add.km_min  || 0);
-      var effectiveKm = (kmMin > 0 && kmCRT < kmMin) ? kmMin : kmCRT;
+      var effectiveKm = (kmMin > 0 && effectiveKmBase < kmMin) ? kmMin : effectiveKmBase;
+      // matchInfo per km_nuovo/km_vecchio
+      if (!matchInfo) {
+        var _kmNote = kmMin > 0 && effectiveKmBase < kmMin ? ' — min. ' + kmMin + ' km' : '';
+        matchInfo = effectiveKm + ' km' + _kmNote;
+      }
       // Lookup: trova la riga con km >= effectiveKm (arrotonda alla fascia superiore)
-      // Supporta sia formato singolo {km} che range {km_da,km_a}
       var sortedRows = rows.slice().sort(function(a,b){
         return parseFloat(a.km||a.km_da||0) - parseFloat(b.km||b.km_da||0);
       });
       var found = null;
-      // Prima: cerca riga con km >= effectiveKm (fascia superiore più vicina)
       for (var ri=0; ri<sortedRows.length; ri++) {
         var rowKm = parseFloat(sortedRows[ri].km || sortedRows[ri].km_da || 0);
         if (rowKm >= effectiveKm) { found = sortedRows[ri]; break; }
       }
-      // Fallback: usa ultima riga (km effettivi superano tutte le fasce)
-      if (!found) found = sortedRows[sortedRows.length-1];
-      // Fallback minimo: usa prima riga
-      if (!found && sortedRows.length) found = sortedRows[0];
-      if (!found) return null;
+      if (!found) return null;  // nessun fallback: km fuori range → nessun risultato
       base20 = Math.round(parseFloat(String(found.c20||'0').replace(/[^0-9.,]/g,'').replace(',','.')) || 0);
       base40 = Math.round(parseFloat(String(found.c40||found.c20||'0').replace(/[^0-9.,]/g,'').replace(',','.')) || 0);
       var _kmNote = kmMin > 0 && kmCRT < kmMin ? ' — min. ' + kmMin + ' km' : '';
