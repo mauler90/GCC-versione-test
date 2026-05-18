@@ -368,7 +368,7 @@
   //  MERGE / SYNC
   // ═══════════════════════════════════════════════
 
-  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','data_validita'];
+  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','km_percorrenza','data_validita'];
 
   function chiaveTratta(r) {
     return [norm(r.luogo_1),norm(r.luogo_2),norm(r.delivery_place),
@@ -1459,7 +1459,7 @@
       '}'+
 
       'var TRATTA_FLDS=["traffic_type","committente","luogo_1","luogo_2","delivery_place","porto_riferimento"];'+
-      'var COSTO_FLDS=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note"];'+
+      'var COSTO_FLDS=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note","km_percorrenza"];'+
       'function fid(f){return "f-"+f.replace(/_/g,"-");}'+
 
       'function apriForm(idx){'+
@@ -1513,8 +1513,8 @@
       '}'+
 
       'function esportaExcelFull(){'+
-        'var hdr=[["traffic_type","committente","luogo_1","luogo_2","delivery_place","porto_riferimento","costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","fuel","note","data_validita"]];'+
-        '_rows.forEach(function(r){hdr.push([r.traffic_type||"",r.committente||"",r.luogo_1||"",r.luogo_2||"",r.delivery_place||"",r.porto_riferimento||"",r.costo_20||"",r.costo_40||"",r.costo_hc||"",r.congestion||"",r.extra_stop||"",r.s_notte||"",r.allaccio_rf||"",r.adr||"",r.fuel||"",r.note||"",r.data_validita||""]);});'+
+        'var hdr=[["traffic_type","committente","luogo_1","luogo_2","delivery_place","porto_riferimento","costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","fuel","note","km_percorrenza","data_validita"]];'+
+        '_rows.forEach(function(r){hdr.push([r.traffic_type||"",r.committente||"",r.luogo_1||"",r.luogo_2||"",r.delivery_place||"",r.porto_riferimento||"",r.costo_20||"",r.costo_40||"",r.costo_hc||"",r.congestion||"",r.extra_stop||"",r.s_notte||"",r.allaccio_rf||"",r.adr||"",r.fuel||"",r.note||"",r.km_percorrenza||"",r.data_validita||""]);});'+
         'var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hdr),"Listino");'+
         'XLSX.writeFile(wb,"listino_concordati_"+new Date().toISOString().slice(0,10)+".xlsx");'+
       '}'+
@@ -1607,6 +1607,7 @@
             '<label>S. Notte (&euro;)<input type="number" id="f-s-notte" placeholder="vuoto = no"><\/label>'+
             '<label>Reefer (%)<input type="number" id="f-allaccio-rf" min="0" step="0.1" placeholder="vuoto = no"><\/label>'+
             '<label>ADR (&euro;)<input type="number" id="f-adr" placeholder="vuoto = no"><\/label>'+
+            '<label>KM percorrenza<input type="number" id="f-km-percorrenza" min="0" step="1" placeholder="vuoto = ignora"><\/label>'+
             '<label class="full">Note<input type="text" id="f-note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
           '<div class="fuel-row">'+
@@ -1948,6 +1949,7 @@
           costoB:costoB, extras:extras, hasFuel:hasFuel,
           equip:equipLabel(ct),
           note:m.note||'', data_validita:m.data_validita||'',
+          kmManuale: parseFloat(m.km_percorrenza || 0),
           containerType:ct,
           containers:[]
         };
