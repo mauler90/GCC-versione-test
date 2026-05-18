@@ -1607,7 +1607,10 @@
             '<label>S. Notte (&euro;)<input type="number" id="f-s-notte" placeholder="vuoto = no"><\/label>'+
             '<label>Reefer (%)<input type="number" id="f-allaccio-rf" min="0" step="0.1" placeholder="vuoto = no"><\/label>'+
             '<label>ADR (&euro;)<input type="number" id="f-adr" placeholder="vuoto = no"><\/label>'+
-            '<label>KM percorrenza<input type="number" id="f-km-percorrenza" min="0" step="1" placeholder="vuoto = ignora"><\/label>'+
+            '<label class="full" style="background:#eaf4fb;padding:8px;border-radius:6px;border:1px solid #aed6f1">'+
+              '&#x1F4CD; KM percorrenza viaggio'+
+              '<input type="number" id="f-km-percorrenza" min="0" step="1" placeholder="vuoto = ignorato — richiesto per calcolo vettori su multi-stop">'+
+            '<\/label>'+
             '<label class="full">Note<input type="text" id="f-note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
           '<div class="fuel-row">'+
