@@ -2013,11 +2013,12 @@
         }
         if(m.adr&&m.adr!=='')                      extras.push('+ \u20ac'+m.adr+' ADR');
         var hasFuel=norm(m.fuel)==='si';
+        var fuelPercCustom = parseFloat(m.fuel_perc_custom || 0);  // fuel personalizzato concordato
         gruppiMap[gKey] = {
           gKey:gKey, chiave:chiave,
           indirizzi:r.indirizzi, indirizziParsed:r.indirizziParsed, isADR:r.isADR||false, delivery_place:r.delivery_place,
           committente:r.committente, traffic:r.traffic, porto:r.porto,
-          costoB:costoB, extras:extras, hasFuel:hasFuel,
+          costoB:costoB, extras:extras, hasFuel:hasFuel, fuelPercCustom:fuelPercCustom,
           equip:equipLabel(ct),
           note:m.note||'', data_validita:m.data_validita||'',
           kmManuale: parseFloat(m.km_percorrenza || 0),
@@ -2145,7 +2146,7 @@
 
       var costoHtml =
         '<span style="font-weight:bold;color:#27ae60">\u20ac'+g.costoB+'</span>'+
-        (g.hasFuel?' <span class="fuel-cell" data-base="'+g.costoB+'" style="color:#e67e22;font-size:11px"></span>':'')+
+        (g.hasFuel?' <span class="fuel-cell" data-base="'+g.costoB+'"'+(g.fuelPercCustom>0?' data-fuel-custom="'+g.fuelPercCustom+'"':'')+' style="color:#e67e22;font-size:11px"></span>':'')+
         (g.extras.length?' <span style="color:#7f8c8d;font-size:11px"> '+g.extras.join(' ')+'</span>':'');
 
       // Encode containers list for the badge
@@ -2483,14 +2484,16 @@
         'aggiornaFuelCells();'+
       '});'+
       'function aggiornaFuelCells(){'+
-        'var perc=_fuelOn?(parseFloat(document.getElementById("fuel-perc").value)||0):0;'+
+        'var percGlobal=_fuelOn?(parseFloat(document.getElementById("fuel-perc").value)||0):0;'+
         'document.querySelectorAll(".fuel-cell").forEach(function(el){'+
-          'if(perc>0){'+
+          'var perc=el.dataset.fuelCustom?parseFloat(el.dataset.fuelCustom):percGlobal;'+
+          'if(perc>0&&el.dataset.fuelCustom&&!_fuelOn){var base2=parseFloat(el.dataset.base);var fv2=Math.round(base2*perc/100);var tot2=Math.round(base2+fv2);el.textContent=" + \u20ac"+fv2+" fuel ("+perc+"%) = \u20ac"+tot2;return;}'+
+          'if(perc>0&&_fuelOn){'+
             'var base=parseFloat(el.dataset.base);'+
             'var fv=Math.round(base*perc/100);'+
             'var tot=Math.round(base+fv);'+
             'el.textContent=" + \u20ac"+fv+" fuel ("+perc+"%) = \u20ac"+tot;'+
-          '}else{el.textContent="";}'+
+          '}else if(!el.dataset.fuelCustom){el.textContent="";}'+
         '});'+
       '}'+
 
