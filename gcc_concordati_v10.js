@@ -2336,6 +2336,7 @@
     // scriptData: identico a v9.1 tranne _gruppi aggiunto,
     // apriModaleModifica e cancellaRigaTrovati aggiornati per gi
     var scriptData=
+      'function fmtDate(el){var v=el.value.replace(/[^0-9]/g,"");if(v.length>4)v=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4,6);else if(v.length>2)v=v.slice(0,2)+"/"+v.slice(2);el.value=v;}'+
       'var _mancanti='+JSON.stringify(mancanti)+';'+
       'var _mGruppiM='+JSON.stringify(mGruppiM)+';'+
       'var _trovati='+JSON.stringify(trovati)+';'+
@@ -2632,6 +2633,10 @@
         '});'+
         'var elKm=document.getElementById("f_km_percorrenza");'+
         'if(elKm)elKm.value=(rigaLS&&rigaLS.km_percorrenza)?rigaLS.km_percorrenza:"";'+
+        'var elFpc=document.getElementById("f_fuel_perc_custom");'+
+        'if(elFpc)elFpc.value=(rigaLS&&rigaLS.fuel_perc_custom)?rigaLS.fuel_perc_custom:"";'+
+        'var elFdc=document.getElementById("f_fuel_data_custom");'+
+        'if(elFdc){var _td=new Date();var _d2=String(_td.getDate()).padStart(2,\'0\');var _m2=String(_td.getMonth()+1).padStart(2,\'0\');var _y2=String(_td.getFullYear()).slice(2);elFdc.value=(rigaLS&&rigaLS.fuel_data_custom)?rigaLS.fuel_data_custom:_d2+\'/\'+_m2+\'/\'+_y2;}'+
         'var elData=document.getElementById("f_data_validita");'+
         'elData.value=(rigaLS&&rigaLS.data_validita)?rigaLS.data_validita:_dataOggi;'+
         'var elOp2=document.getElementById("f_operatore");if(elOp2)elOp2.value=(rigaLS&&rigaLS.operatore)||"";'+
@@ -2974,7 +2979,7 @@
             '<\/label>'+
             '<label style="font-size:11px;color:#7d6608;font-weight:bold;display:flex;flex-direction:column;gap:3px">'+
               'Concordato il'+
-              '<input type="text" id="f_fuel_data_custom" maxlength="8" placeholder="DD/MM/YY" style="width:90px">'+
+              '<input type="text" id="f_fuel_data_custom" maxlength="8" placeholder="DD/MM/YY" style="width:90px" oninput="fmtDate(this)">'+
             '<\/label>'+
           '<\/div>'+
           '<div class="modal-btns">'+
