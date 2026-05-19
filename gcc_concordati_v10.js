@@ -2146,7 +2146,7 @@
 
       var costoHtml =
         '<span style="font-weight:bold;color:#27ae60">\u20ac'+g.costoB+'</span>'+
-        (g.hasFuel?' <span class="fuel-cell" data-base="'+g.costoB+'"'+(g.fuelPercCustom>0?' data-fuel-custom="'+g.fuelPercCustom+'"':'')+' style="color:#e67e22;font-size:11px"></span>':'')+
+        ((g.hasFuel||g.fuelPercCustom>0)?' <span class="fuel-cell" data-base="'+g.costoB+'"'+(g.fuelPercCustom>0?' data-fuel-custom="'+g.fuelPercCustom+'"':'')+' style="color:#e67e22;font-size:11px"></span>':'')+
         (g.extras.length?' <span style="color:#7f8c8d;font-size:11px"> '+g.extras.join(' ')+'</span>':'');
 
       // Encode containers list for the badge
@@ -2487,14 +2487,14 @@
       'function aggiornaFuelCells(){'+
         'var percGlobal=_fuelOn?(parseFloat(document.getElementById("fuel-perc").value)||0):0;'+
         'document.querySelectorAll(".fuel-cell").forEach(function(el){'+
-          'var perc=el.dataset.fuelCustom?parseFloat(el.dataset.fuelCustom):percGlobal;'+
-          'if(perc>0&&el.dataset.fuelCustom&&!_fuelOn){var base2=parseFloat(el.dataset.base);var fv2=Math.round(base2*perc/100);var tot2=Math.round(base2+fv2);el.textContent=" + \u20ac"+fv2+" fuel ("+perc+"%) = \u20ac"+tot2;return;}'+
-          'if(perc>0&&_fuelOn){'+
-            'var base=parseFloat(el.dataset.base);'+
-            'var fv=Math.round(base*perc/100);'+
-            'var tot=Math.round(base+fv);'+
-            'el.textContent=" + \u20ac"+fv+" fuel ("+perc+"%) = \u20ac"+tot;'+
-          '}else if(!el.dataset.fuelCustom){el.textContent="";}'+
+          'var base=parseFloat(el.dataset.base||0);'+
+          'if(el.dataset.fuelCustom){'+
+            'var perc=parseFloat(el.dataset.fuelCustom);'+
+            'if(perc>0){var fv=Math.round(base*perc/100);el.textContent=" + \u20ac"+fv+" fuel ("+perc+"%) = \u20ac"+Math.round(base+fv);}'+
+          '}else{'+
+            'if(percGlobal>0){var fv2=Math.round(base*percGlobal/100);el.textContent=" + \u20ac"+fv2+" fuel ("+percGlobal+"%) = \u20ac"+Math.round(base+fv2);}'+
+            'else{el.textContent="";}'+
+          '}'+
         '});'+
       '}'+
 
