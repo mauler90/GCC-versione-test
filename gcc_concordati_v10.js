@@ -2639,11 +2639,11 @@
         'if(elFdc){var _td=new Date();var _d2=String(_td.getDate()).padStart(2,\'0\');var _m2=String(_td.getMonth()+1).padStart(2,\'0\');var _y2=String(_td.getFullYear()).slice(2);elFdc.value=(rigaLS&&rigaLS.fuel_data_custom)?rigaLS.fuel_data_custom:_d2+\'/\'+_m2+\'/\'+_y2;}'+
         'var elData=document.getElementById("f_data_validita");'+
         'elData.value=(rigaLS&&rigaLS.data_validita)?rigaLS.data_validita:_dataOggi;'+
-        'var elOp2=document.getElementById("f_operatore");if(elOp2)elOp2.value=(rigaLS&&rigaLS.operatore)||"";'+
+        'var elOp=document.getElementById("f_operatore");'+
+        'if(elOp){var _opVal=(rigaLS&&rigaLS.operatore)||(g._edit&&g._edit.operatore)||"";elOp.value=_opVal;}'+
         'if(rigaLS&&(rigaLS.fuel||"").toUpperCase()==="SI"){_mFuelOn=true;}'+
         'var t=document.getElementById("m-fuel-toggle");'+
         't.textContent=_mFuelOn?"SI":"NO";t.classList.toggle("on",_mFuelOn);'+
-        'var elOp=document.getElementById("f_operatore");if(elOp)elOp.value=(g._edit&&g._edit.operatore)||"";'+
         'document.getElementById("overlay").classList.add("show");'+
       '}'+
 
@@ -2696,7 +2696,7 @@
         'if(_modalMode==="modifica"){salvaModifica();return;}'+
         'if(_idxCorrente===null)return;'+
         'var edit={};'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'edit.operatore=(document.getElementById("f_operatore")||{value:""}).value.trim().toUpperCase();'+
@@ -2719,7 +2719,10 @@
           'adr:edit.adr||"",' +
           'fuel:edit.fuel,fuel_perc:"",' +
           'note:edit.note||"",' +
-          'data_validita:edit.data_validita||"",'+
+          'data_validita:edit.data_validita||"",' +
+          'km_percorrenza:edit.km_percorrenza||"",' +
+          'fuel_perc_custom:edit.fuel_perc_custom||"",' +
+          'fuel_data_custom:edit.fuel_data_custom||"",' +
           'operatore:edit.operatore||""'+
         '};'+
         'try{'+
@@ -2758,7 +2761,7 @@
       /* ── salva modifica (aggiorna riga esistente in LS) ── */
       'function salvaModifica(){'+
         'var edit={};'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'try{'+
@@ -2773,6 +2776,9 @@
                 'flds.forEach(function(f){lsData.rows[i][f]=edit[f]||"";});'+
                 'lsData.rows[i].fuel=edit.fuel;'+
                 'lsData.rows[i].operatore=(document.getElementById("f_operatore")||{value:""}).value.trim().toUpperCase();'+
+                'if(edit.km_percorrenza!==undefined)lsData.rows[i].km_percorrenza=edit.km_percorrenza||"";'+
+                'if(edit.fuel_perc_custom!==undefined)lsData.rows[i].fuel_perc_custom=edit.fuel_perc_custom||"";'+
+                'if(edit.fuel_data_custom!==undefined)lsData.rows[i].fuel_data_custom=edit.fuel_data_custom||"";'+
               '}'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
