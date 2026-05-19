@@ -159,24 +159,47 @@
         });
         // Carica vecchio distanziere da localStorage con decompressione LZString
         function _loadKmVecchio() {
-          try {
-            var lzDec = (typeof LZString !== 'undefined') ? LZString.decompressFromUTF16.bind(LZString) : null;
-            [['liv','ITLIV'],['spe','ITSPE']].forEach(function(pair){
-            var key = pair[0]==='liv' ? LS_KM_VECCHIO_LIV : LS_KM_VECCHIO_SPE;
-            var porto = pair[1];
-            var raw = localStorage.getItem(key);
-            if (raw) {
-              var str = lzDec ? (lzDec(raw) || raw) : raw;  // decomprime se LZString disponibile
-              var d = JSON.parse(str);
-              if (d && d.rows) {
-                d.rows.forEach(function(r){
-                  _gcc_km_vecchio_rows.push({porto:porto,cap:r[0],prov:r[1],localita:r[2],km:r[3]});
-                });
-              }
+          var lzDec = (typeof LZString !== 'undefined') ? LZString.decompressFromUTF16.bind(LZString) : null;
+          var _kvPairs = [['liv',LS_KM_VECCHIO_LIV,GIST_FILE_KM_VECCHIO_LIV,'ITLIV'],
+                          ['spe',LS_KM_VECCHIO_SPE,GIST_FILE_KM_VECCHIO_SPE,'ITSPE']];
+          _kvPairs.forEach(function(pair){
+            var lsKey=pair[1],gFile=pair[2],porto=pair[3];
+            function _pr(rows){
+              rows.forEach(function(r){
+                _gcc_km_vecchio_rows.push(Array.isArray(r)
+                  ? {porto:porto,cap:r[0],prov:r[1],localita:r[2],km:r[3]}
+                  : {porto:porto,cap:r.cap||'',prov:r.prov||'',localita:r.localita||'',km:r.km||''});
+              });
             }
+            // 1) prova localStorage
+            try{
+              var raw=localStorage.getItem(lsKey);
+              if(raw){
+                var str=lzDec?(lzDec(raw)||raw):raw;
+                var d=JSON.parse(str);
+                if(d&&d.rows&&d.rows.length){_pr(d.rows);return;}
+              }
+            }catch(e){}
+            // 2) fallback Gist
+            var tok=localStorage.getItem(LS_TOKEN);
+            if(!tok)return;
+            fetch('https://api.github.com/gists/'+GIST_ID,{
+              headers:{'Authorization':'token '+tok,'Accept':'application/vnd.github.v3+json'}
+            }).then(function(r){return r.ok?r.json():null;})
+              .then(function(gd){
+                if(!gd)return;
+                var f=gd.files[gFile];if(!f)return;
+                var p=f.truncated?fetch(f.raw_url).then(function(r){return r.json();}):Promise.resolve(JSON.parse(f.content));
+                p.then(function(d){
+                  if(d&&d.rows&&d.rows.length){
+                    _pr(d.rows);
+                    try{localStorage.setItem(lsKey,JSON.stringify({rows:d.rows,ts:Date.now()}));}catch(e){}
+                    console.log('[GCC] KmVecchio '+porto+' da Gist: '+d.rows.length+' righe');
+                  }
+                }).catch(function(){});
+              }).catch(function(){});
           });
-            if (_gcc_km_vecchio_rows.length) console.log('[GCC] KmVecchio: ' + _gcc_km_vecchio_rows.length + ' righe');
-          } catch(e) {}
+          if(_gcc_km_vecchio_rows.length)console.log('[GCC] KmVecchio da LS: '+_gcc_km_vecchio_rows.length+' righe');
         }
         Promise.all(proms).then(function() {
           _gcc_vettori_loading = false;
