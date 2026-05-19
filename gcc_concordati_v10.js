@@ -2967,6 +2967,16 @@
             '<button id="m-fuel-toggle">NO<\/button>'+
             '<span class="fuel-hint"><\/span>'+
           '<\/div>'+
+          '<div style="display:flex;gap:10px;align-items:flex-end;padding:8px 10px;background:#fef9e7;border-radius:6px;border:1px solid #f0c040;margin-top:6px">'+
+            '<label style="font-size:11px;color:#7d6608;font-weight:bold;display:flex;flex-direction:column;gap:3px;flex:1">'+
+              '&#x26FD; Fuel % concordato <small style="font-weight:normal;color:#aaa">(vuoto = usa globale)</small>'+
+              '<input type="number" id="f_fuel_perc_custom" min="0" max="100" step="0.1" placeholder="es. 14.5">'+
+            '<\/label>'+
+            '<label style="font-size:11px;color:#7d6608;font-weight:bold;display:flex;flex-direction:column;gap:3px">'+
+              'Concordato il'+
+              '<input type="text" id="f_fuel_data_custom" maxlength="8" placeholder="DD/MM/YY" style="width:90px">'+
+            '<\/label>'+
+          '<\/div>'+
           '<div class="modal-btns">'+
             '<label style="font-size:11px;color:#555;font-weight:bold;display:flex;flex-direction:column;gap:3px;margin-right:auto">'+
               'Data Validita<input type="text" id="f_data_validita" maxlength="8" placeholder="DD/MM/YY" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;width:90px">'+
