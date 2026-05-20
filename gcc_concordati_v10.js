@@ -2919,11 +2919,11 @@
       '}';
 
     var htmlTrovatiSection = gruppiOrdine.length>0
-      ? '<table><thead><tr>'+thColsTrovati+'</tr></thead><tbody>'+htmlTrovati+'</tbody></table>'
+      ? '<table><thead><tr>'+thColsTrovati+'</tr></thead><tbody id="tbody-trovati">'+htmlTrovati+'</tbody></table>'
       : '<div class="empty">Nessuna tariffa trovata</div>';
 
     var htmlMancantiSection = mancanti.length>0
-      ? '<table><thead><tr>'+thCols+'</tr></thead><tbody>'+htmlMancanti+'</tbody></table>'+
+      ? '<table><thead><tr>'+thCols+'</tr></thead><tbody id="tbody-mancanti">'+htmlMancanti+'</tbody></table>'+
         '<button class="btn-exp no-print" id="btn-export">&#x1F4BE; Scarica Excel aggiornato</button>'
       : '<div class="empty">Tutti i costi sono stati trovati &#x1F389;</div>';
 
