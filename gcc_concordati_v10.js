@@ -2035,8 +2035,13 @@
 
     // thCols per trovati: aggiunta colonna Equip.
     var thColsTrovati =
-      '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
-      '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
+      '<th>Containers</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-trovati\',1)">Equip. \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-trovati\',2)">Indirizzi \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-trovati\',3)">Delivery Place \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-trovati\',4)">Committente \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-trovati\',5)">Traffic \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-trovati\',6)">Porto \u21c5</th>' +
       '<th>Costo</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Vettori</th><th class="no-print">Azioni</th>';
 
     // Raggruppa mancanti per tratta + equip
@@ -2134,8 +2139,13 @@
     });
 
     var thCols =
-      '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
-      '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
+      '<th>Containers</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-mancanti\',1)">Equip. \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-mancanti\',2)">Indirizzi \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-mancanti\',3)">Delivery Place \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-mancanti\',4)">Committente \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-mancanti\',5)">Traffic \u21c5</th>' +
+      '<th style="cursor:pointer" onclick="sortTable(\'tbody-mancanti\',6)">Porto \u21c5</th>' +
       '<th>Costo CRT</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Vettori</th><th class="no-print">Azioni</th>';
 
     // Genera HTML trovati raggruppati
@@ -2271,6 +2281,7 @@
       '.ok{color:#27ae60}.warn{color:#e67e22}'+
       'table{width:100%;border-collapse:collapse;font-size:12px}'+
       'th{background:#1a5276;color:white;padding:7px 8px;text-align:left;white-space:nowrap}'+
+      'th[onclick]{cursor:pointer}th[onclick]:hover{background:#2471a3;user-select:none}'+
       'td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:middle}'+
       'tr:hover td{background:#f0f7ff}'+
       '.empty{color:#aaa;font-style:italic;padding:10px}'+
