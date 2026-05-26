@@ -1374,7 +1374,17 @@
       + fld('reefer_min', 'Reefer minimo', '&#8364;','Importo minimo garantito')
       + '</div>'
       + '<div class="sec-note">Calcolo: <b>subtotale &#215; %</b> &#8212; se il risultato &egrave; inferiore al minimo viene usato il minimo.</div>'
-      + '</div>';
+      + '</div>'
+      + '<div class="section"><div class="sec-header" style="background:#d35400">&#x26FD; Gestione Fuel Parziali Concordati</div>'
+      + '<div style="padding:14px 16px">'
+      + '<p style="font-size:11px;color:#888;margin-bottom:12px">Aumenta o diminuisci il fuel % di tutti i concordati che hanno un fuel personalizzato impostato. Inserisci il delta (es. <b>+1</b> o <b>-0.5</b>).</p>'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+      + '<label style="font-size:12px;font-weight:bold;color:#555">Delta %<br><input type="number" id="bulk-fuel-delta" step="0.1" placeholder="es. +1 o -0.5" style="width:120px;padding:7px 10px;border:1px solid #d0d7de;border-radius:5px;font-size:14px;margin-top:4px"></label>'
+      + '<button id="btn-apply-bulk" style="margin-top:20px;padding:8px 16px;background:#d35400;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold">&#x26FD; Applica</button>'
+      + '</div>'
+      + '<div id="fuel-history-wrap"><p style="font-size:11px;font-weight:bold;color:#555;margin-bottom:6px">Storico aggiornamenti:</p>'
+      + '<div id="fuel-history" style="font-size:11px;color:#777;max-height:150px;overflow-y:auto;border:1px solid #eee;border-radius:5px;padding:8px">Nessun aggiornamento registrato.</div>'
+      + '</div></div></div>';
 
     var allKeys = JSON.stringify(Object.keys(add));
 
@@ -1393,7 +1403,46 @@
       + 'var _GFA="' + GIST_FILE_ADD + '";'
       + 'var _TK="' + LS_TOKEN + '";'
       + 'var _keys=' + allKeys + ';'
+      + 'var _LS_FH="tcp_fuel_history";'
+      + 'function renderHistory(){'
+      + '  var raw=localStorage.getItem(_LS_FH);var list=[];'
+      + '  try{if(raw)list=JSON.parse(raw);}catch(e){}'
+      + '  var el=document.getElementById("fuel-history");if(!el)return;'
+      + '  if(!list.length){el.innerHTML="<i>Nessun aggiornamento registrato.</i>";return;}'
+      + '  el.innerHTML=list.slice().reverse().map(function(h){'
+      + '    return "<div style=\\"padding:3px 0;border-bottom:1px solid #f0f0f0\\">"'
+      + '      +"<b>"+h.date+"</b> — delta: "+(h.delta>0?"+":"")+h.delta'
+      + '      +"% — "+h.count+" concordati aggiornati</div>";'
+      + '  }).join("");'
+      + '}'
+      + 'function applyBulkFuel(){'
+      + '  var delta=parseFloat(document.getElementById("bulk-fuel-delta").value);'
+      + '  if(isNaN(delta)||delta===0){alert("Inserisci un delta valido (es. +1 o -0.5)");return;}'
+      + '  var lsKey="tcp_listino";'
+      + '  var raw=localStorage.getItem(lsKey);if(!raw){alert("Nessun listino trovato. Calcola prima i concordati.");return;}'
+      + '  try{'
+      + '    var ls=JSON.parse(raw);var cnt=0;'
+      + '    ls.rows.forEach(function(r){'
+      + '      var cur=parseFloat(r.fuel_perc_custom||0);'
+      + '      if(cur>0){'
+      + '        var nv=Math.round((cur+delta)*10)/10;'
+      + '        if(nv<0)nv=0;'
+      + '        r.fuel_perc_custom=String(nv);cnt++;'
+      + '      }'
+      + '    });'
+      + '    localStorage.setItem(lsKey,JSON.stringify(ls));'
+      + '    var hist=[];try{var hr=localStorage.getItem(_LS_FH);if(hr)hist=JSON.parse(hr);}catch(e){}'
+      + '    var now=new Date();var ds=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");'
+      + '    hist.push({date:ds,delta:delta,count:cnt});'
+      + '    if(hist.length>50)hist=hist.slice(-50);'
+      + '    try{localStorage.setItem(_LS_FH,JSON.stringify(hist));}catch(e){}'
+      + '    renderHistory();'
+      + '    alert("\u2705 Aggiornati "+cnt+" concordati.\nDelta applicato: "+(delta>0?"+":"")+delta+"%\n\nRiapri i concordati per vedere le modifiche.");'
+      + '  }catch(e){alert("Errore: "+e.message);}'
+      + '}'
       + 'document.getElementById("btn-chiudi").onclick=function(){window.close();};'
+      + 'document.getElementById("btn-apply-bulk").onclick=applyBulkFuel;'
+      + 'renderHistory();'
       + 'document.getElementById("btn-salva").onclick=function(){'
       + 'var n={};_keys.forEach(function(k){var e=document.getElementById("add-"+k);n[k]=e?e.value.trim():"";});'
       + 'try{localStorage.setItem(_LS,JSON.stringify(n));}catch(e){}'
@@ -1536,7 +1585,7 @@
       '}'+
 
       'var TRATTA_FLDS=["traffic_type","committente","luogo_1","luogo_2","delivery_place","porto_riferimento"];'+
-      'var COSTO_FLDS=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note","km_percorrenza"];'+
+      'var COSTO_FLDS=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
       'function fid(f){return "f-"+f.replace(/_/g,"-");}'+
 
       'function apriForm(idx){'+
@@ -1687,6 +1736,11 @@
             '<label class="full" style="background:#eaf4fb;padding:8px;border-radius:6px;border:1px solid #aed6f1">'+
               '&#x1F4CD; KM percorrenza viaggio'+
               '<input type="number" id="f-km-percorrenza" min="0" step="1" placeholder="vuoto = ignorato — richiesto per calcolo vettori su multi-stop">'+
+            '<\/label>'+
+          '<label class="full" style="background:#fdf2f8;padding:8px;border-radius:6px;border:1px solid #d7bde2;margin-top:4px">'+
+              '&#x1F50D; Forza localit\u00e0 CRT'+
+              '<small style="font-weight:normal;color:#999;display:block;margin:2px 0 4px">Se il matching automatico prende la localit\u00e0 sbagliata, scrivi qui il nome parziale di quella corretta.</small>'+
+              '<input type="text" id="f-crt-override" placeholder="es. PONTE MOTTA — vuoto = matching automatico">'+
             '<\/label>'+
             '<label class="full">Note<input type="text" id="f-note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
@@ -2382,7 +2436,23 @@
         'var t=ev.target;if(!t||t.tagName!=="TH"||!t.dataset||!t.dataset.tbody)return;'+
         'sortTable(t.dataset.tbody,parseInt(t.dataset.col));'+
       '});'+
-      'function fmtDate(el){var v=el.value.replace(/[^0-9]/g,"");if(v.length>4)v=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4,6);else if(v.length>2)v=v.slice(0,2)+"/"+v.slice(2);el.value=v;}'+
+      'function aggiornaBulkFuel(){'+
+  'var globPerc=parseFloat(document.getElementById("fuel-perc").value)||0;'+
+  'var newPerc=parseFloat(prompt("Nuovo fuel % per i concordati con fuel personalizzato:\n(lascia vuoto per annullare)",globPerc||"17.5"));'+
+  'if(isNaN(newPerc)||newPerc<0){alert("Operazione annullata.");return;}'+
+  'try{'+
+    'var raw=localStorage.getItem(_LS_LISTINO);if(!raw)return;'+
+    'var ls=JSON.parse(raw);var cnt=0;'+
+    'ls.rows.forEach(function(r){'+
+      'if(r.fuel_perc_custom&&parseFloat(r.fuel_perc_custom)>0){'+
+        'r.fuel_perc_custom=String(newPerc);cnt++;'+
+      '}'+
+    '});'+
+    'localStorage.setItem(_LS_LISTINO,JSON.stringify(ls));'+
+    'alert("\u2705 Aggiornati "+cnt+" concordati con fuel personalizzato a "+newPerc+"%\n(ricarica i concordati per vedere le modifiche)");'+
+  '}catch(e){alert("Errore: "+e.message);}'+
+'}'+
+'function fmtDate(el){var v=el.value.replace(/[^0-9]/g,"");if(v.length>4)v=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4,6);else if(v.length>2)v=v.slice(0,2)+"/"+v.slice(2);el.value=v;}'+
       'var _mancanti='+JSON.stringify(mancanti)+';'+
       'var _mGruppiM='+JSON.stringify(mGruppiM)+';'+
       'var _trovati='+JSON.stringify(trovati)+';'+
@@ -2985,6 +3055,7 @@
             '<\/div>'+
           '<\/div>'+
           '<select id="print-sel" style="padding:5px 9px;border:1px solid #bbb;border-radius:5px;font-size:12px;cursor:pointer">'+'<option value="all">Stampa tutto</option>'+'<option value="trovati">Solo concordati</option>'+'<option value="mancanti">Solo mancanti</option>'+'</select> '+'<button id="btn-stampa">&#x1F5A8; Stampa<\/button>'+
+          '<button id="btn-bulk-fuel" style="padding:5px 10px;background:#e67e22;color:white;border:none;border-radius:5px;cursor:pointer;font-size:12px;margin-left:6px" title="Modifica tutti i fuel parziali">&#x26FD; Fuel Parziali</button>'+
         '<\/div>'+
       '<\/div>'+
 
