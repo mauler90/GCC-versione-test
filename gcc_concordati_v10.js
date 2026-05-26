@@ -336,6 +336,15 @@
       var parsed = (g.indirizziParsed && g.indirizziParsed[0]) || null;
       var loc    = (parsed && parsed.loc) || '';
       var kmCRT  = g.crtMatch && g.crtMatch.riga ? parseFloat(g.crtMatch.riga.km || 0) : 0;
+      // Se c'è un override CRT, usa quello per trovare il km corretto nel tariffario
+      var crtOverride = (g.crtOverride || '').trim();
+      if (crtOverride && _gcc_crt_rows.length) {
+        try {
+          var _ovrParsed = {loc: crtOverride.toUpperCase(), prov: (parsed && parsed.prov)||'', cap: (parsed && parsed.cap)||''};
+          var _cmOvr = cercaCRT(_ovrParsed, porto, _gcc_crt_rows);
+          if (_cmOvr && _cmOvr.riga && _cmOvr.riga.km) kmCRT = parseFloat(_cmOvr.riga.km);
+        } catch(e) {}
+      }
       // Per KM carrier su route mancanti: cerca km nel CRT
       var kmFromCRT = false;
       if (!kmCRT && parsed) {
@@ -434,7 +443,7 @@
   //  MERGE / SYNC
   // ═══════════════════════════════════════════════
 
-  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','km_percorrenza','data_validita'];
+  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','km_percorrenza','fuel_perc_custom','fuel_data_custom','crt_override','data_validita'];
 
   function chiaveTratta(r) {
     return [norm(r.luogo_1),norm(r.luogo_2),norm(r.delivery_place),
@@ -2022,6 +2031,7 @@
           equip:equipLabel(ct),
           note:m.note||'', data_validita:m.data_validita||'',
           kmManuale: parseFloat(m.km_percorrenza || 0),
+          crtOverride: m.crt_override || '',
           containerType:ct,
           containers:[]
         };
@@ -2671,6 +2681,8 @@
         'if(elKm)elKm.value=(rigaLS&&rigaLS.km_percorrenza)?rigaLS.km_percorrenza:"";'+
         'var elFpc=document.getElementById("f_fuel_perc_custom");'+
         'if(elFpc)elFpc.value=(rigaLS&&rigaLS.fuel_perc_custom)?rigaLS.fuel_perc_custom:"";'+
+        'var elCOvr=document.getElementById("f_crt_override");'+
+        'if(elCOvr)elCOvr.value=(rigaLS&&rigaLS.crt_override)?rigaLS.crt_override:"";'+
         'var elFdc=document.getElementById("f_fuel_data_custom");'+
         'if(elFdc){var _td=new Date();var _d2=String(_td.getDate()).padStart(2,\'0\');var _m2=String(_td.getMonth()+1).padStart(2,\'0\');var _y2=String(_td.getFullYear()).slice(2);elFdc.value=(rigaLS&&rigaLS.fuel_data_custom)?rigaLS.fuel_data_custom:_d2+\'/\'+_m2+\'/\'+_y2;}'+
         'var elData=document.getElementById("f_data_validita");'+
@@ -2732,7 +2744,7 @@
         'if(_modalMode==="modifica"){salvaModifica();return;}'+
         'if(_idxCorrente===null)return;'+
         'var edit={};'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'edit.operatore=(document.getElementById("f_operatore")||{value:""}).value.trim().toUpperCase();'+
@@ -2759,6 +2771,7 @@
           'km_percorrenza:edit.km_percorrenza||"",' +
           'fuel_perc_custom:edit.fuel_perc_custom||"",' +
           'fuel_data_custom:edit.fuel_data_custom||"",' +
+          'crt_override:edit.crt_override||"",' +
           'operatore:edit.operatore||""'+
         '};'+
         'try{'+
@@ -2797,7 +2810,7 @@
       /* ── salva modifica (aggiorna riga esistente in LS) ── */
       'function salvaModifica(){'+
         'var edit={};'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'try{'+
@@ -2815,6 +2828,7 @@
                 'if(edit.km_percorrenza!==undefined)lsData.rows[i].km_percorrenza=edit.km_percorrenza||"";'+
                 'if(edit.fuel_perc_custom!==undefined)lsData.rows[i].fuel_perc_custom=edit.fuel_perc_custom||"";'+
                 'if(edit.fuel_data_custom!==undefined)lsData.rows[i].fuel_data_custom=edit.fuel_data_custom||"";'+
+                'if(edit.crt_override!==undefined)lsData.rows[i].crt_override=edit.crt_override||"";\''+
               '}'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
@@ -3006,6 +3020,11 @@
             '<label class="full" style="background:#eaf4fb;padding:8px;border-radius:6px;border:1px solid #aed6f1;margin-top:4px">'+
               '&#x1F4CD; KM percorrenza viaggio'+
               '<input type="number" id="f_km_percorrenza" min="0" step="1" style="margin-top:4px" placeholder="vuoto = ignora | richiesto per calcolo vettori su multi-stop">'+
+            '<\/label>'+
+          '<label class="full" style="background:#fdf2f8;padding:8px;border-radius:6px;border:1px solid #d7bde2;margin-top:4px">'+
+              '&#x1F50D; Forza localit\u00e0 CRT'+
+              '<small style="font-weight:normal;color:#999;display:block;margin:2px 0 4px">Se il matching automatico prende la localit\u00e0 sbagliata, scrivi qui il nome parziale di quella corretta (es. PONTE MOTTA).</small>'+
+              '<input type="text" id="f_crt_override" style="margin-top:2px" placeholder="es. PONTE MOTTA — vuoto = usa matching automatico">'+
             '<\/label>'+
             '<label class="full">Note<input type="text" id="f_note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
