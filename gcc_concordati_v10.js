@@ -2785,6 +2785,7 @@
               'return k!==chiave;'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
+            'try{pushGist(lsData.rows);}catch(_pe){}'+
           '}'+
         '}catch(e){alert("Errore cancellazione: "+e.message);return;}'+
         'var tr=document.getElementById("trow_"+gi);if(tr)tr.parentNode.removeChild(tr);'+
@@ -2909,6 +2910,7 @@
               '}'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
+            'try{pushGist(lsData.rows);}catch(_pe){}'+
           '}'+
         '}catch(err){console.warn("TCP: errore modifica",err);}'+
         'var gi=_giCorrente;'+
