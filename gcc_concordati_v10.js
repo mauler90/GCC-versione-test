@@ -2214,8 +2214,14 @@
       } else {
         // Singola località: cerca nel CRT usando dati parsati (loc+prov+cap)
         var parsed0 = (g.indirizziParsed && g.indirizziParsed[0]) || null;
-        var match = cercaCRT(parsed0 || indirizzi[0] || '', porto, _crtRows);
+        // Se c'è un override, usa quello per la ricerca CRT
+        var _ovrStr = (m.crt_override || '').trim().toUpperCase();
+        var _searchInput = _ovrStr
+          ? { loc: _ovrStr, prov: (parsed0 && parsed0.prov) || '', cap: '' }
+          : (parsed0 || indirizzi[0] || '');
+        var match = cercaCRT(_searchInput, porto, _crtRows);
         if (match) {
+          if (_ovrStr) match.label = match.label + ' \u2014 override: ' + _ovrStr;
           var calc = calcolaCRT(match.riga, g.containerType, _addCRT, 0, g.isADR, parseFloat(match.riga.km||0));
           if (calc) {
             g.crtMatch = match;
