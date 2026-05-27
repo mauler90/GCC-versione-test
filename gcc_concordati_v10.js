@@ -2758,6 +2758,8 @@
         'if(elKm)elKm.value=(rigaLS&&rigaLS.km_percorrenza)?rigaLS.km_percorrenza:"";'+
         'var elFpc=document.getElementById("f_fuel_perc_custom");'+
         'if(elFpc)elFpc.value=(rigaLS&&rigaLS.fuel_perc_custom)?rigaLS.fuel_perc_custom:"";'+
+        'var elCO=document.getElementById("f_crt_override");'+
+        'if(elCO)elCO.value=(rigaLS&&rigaLS.crt_override)?rigaLS.crt_override:"";'+
         'var elFdc=document.getElementById("f_fuel_data_custom");'+
         'if(elFdc){var _td=new Date();var _d2=String(_td.getDate()).padStart(2,\'0\');var _m2=String(_td.getMonth()+1).padStart(2,\'0\');var _y2=String(_td.getFullYear()).slice(2);elFdc.value=(rigaLS&&rigaLS.fuel_data_custom)?rigaLS.fuel_data_custom:_d2+\'/\'+_m2+\'/\'+_y2;}'+
         'var elData=document.getElementById("f_data_validita");'+
