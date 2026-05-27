@@ -2863,6 +2863,7 @@
         'try{'+
           'var lsRaw=localStorage.getItem(_LS_LISTINO);'+
           'if(lsRaw){var lsData=JSON.parse(lsRaw);lsData.rows.push(nuovaRiga);localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));}'+
+          'alert("[DBG salvaModale-nuovo] crt_override: \""+nuovaRiga.crt_override+"\"");'+
         '}catch(err){console.warn("TCP: errore salvataggio",err);}'+
         'var ct=r.containerType;'+
         'var costoB=ct.isHC?(edit.costo_40||""):(ct.size==="20"?(edit.costo_20||""):(edit.costo_40||""));'+
@@ -2918,6 +2919,8 @@
               '}'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
+            'var _sv=lsData.rows.filter(function(r){var k=[r.luogo_1,r.luogo_2,r.delivery_place,r.porto_riferimento,r.traffic_type,r.committente].map(function(v){return(v||"").toString().toLowerCase().trim();}).join("||");return k===chiave;});'+
+            'alert("[DBG salvaModifica] mode:"+_modalMode+" | crt_override letto: \""+edit.crt_override+"\" | righe trovate: "+_sv.length+" | crt_override salvato: \""+(_sv[0]?_sv[0].crt_override:"n/a")+"\"");'+
             'try{pushGist(lsData.rows);}catch(_pe){}'+
           '}'+
         '}catch(err){console.warn("TCP: errore modifica",err);}'+
