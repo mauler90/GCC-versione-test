@@ -336,15 +336,6 @@
       var parsed = (g.indirizziParsed && g.indirizziParsed[0]) || null;
       var loc    = (parsed && parsed.loc) || '';
       var kmCRT  = g.crtMatch && g.crtMatch.riga ? parseFloat(g.crtMatch.riga.km || 0) : 0;
-      // Se c'è un override CRT, usa quello per trovare il km corretto nel tariffario
-      var crtOverride = (g.crtOverride || '').trim();
-      if (crtOverride && _gcc_crt_rows.length) {
-        try {
-          var _ovrParsed = {loc: crtOverride.toUpperCase(), prov: (parsed && parsed.prov)||'', cap: (parsed && parsed.cap)||''};
-          var _cmOvr = cercaCRT(_ovrParsed, porto, _gcc_crt_rows);
-          if (_cmOvr && _cmOvr.riga && _cmOvr.riga.km) kmCRT = parseFloat(_cmOvr.riga.km);
-        } catch(e) {}
-      }
       // Per KM carrier su route mancanti: cerca km nel CRT
       var kmFromCRT = false;
       if (!kmCRT && parsed) {
@@ -443,7 +434,7 @@
   //  MERGE / SYNC
   // ═══════════════════════════════════════════════
 
-  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','km_percorrenza','fuel_perc_custom','fuel_data_custom','crt_override','data_validita'];
+  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','km_percorrenza','data_validita'];
 
   function chiaveTratta(r) {
     return [norm(r.luogo_1),norm(r.luogo_2),norm(r.delivery_place),
@@ -1279,7 +1270,7 @@
     // Funzioni del popup (statica, nessun valore runtime)
     var _fns = "\nvar _registry=[], _selected=null, _tariffe={}, _colMap={};\n\nfunction u(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}\n\n/* \u2500\u2500 Sidebar \u2500\u2500 */\nfunction renderSidebar(){\n  var h='';\n  _registry.forEach(function(v){\n    var b='';\n    if(v.porti.indexOf('ITSPE')>=0)b+='<span class=\"badge badge-spe\">SPE</span>';\n    if(v.porti.indexOf('ITLIV')>=0)b+='<span class=\"badge badge-liv\">LIV</span>';\n    if(v.tipo!=='localita')b+='<span class=\"badge badge-km\">KM</span>';\n    h+='<div class=\"vitem'+(_selected===v.id?' active':'')+'\" onclick=\"selectV(\\''+v.id+'\\')\">'\n      +'<span class=\"vname\">'+u(v.nome)+'</span><div class=\"vbadges\">'+b+'</div></div>';\n  });\n  document.getElementById('vlist').innerHTML=h||'<div style=\"padding:12px;font-size:12px;color:#bbb\">Nessun vettore. Usa + Nuovo o Sync Gist.</div>';\n}\n\n/* \u2500\u2500 Editor \u2500\u2500 */\nfunction selectV(id){\n  _selected=id;\n  renderSidebar();\n  var v=_registry.find(function(x){return x.id===id;});\n  if(!v)return;\n  renderEditor(v);\n}\n\nfunction renderEditor(v){\n  var add=v.add||{};\n  var rows=_tariffe[v.id]||[];\n  var isKm=v.tipo!=='localita';\n  var cm=v.colMap||{localita:'Localita',cap:'CAP',prov:'Prov',km:'KM',c20:'C20',c40:'C40'};\n\n  var addFlds=[\n    {k:'fuel_perc',l:'Fuel %',u:'%',h:'Sul costo base'},\n    {k:'hc',l:'HC',u:'\u20ac'},{k:'adr',l:'ADR',u:'\u20ac'},{k:'vgm',l:'VGM',u:'\u20ac'},\n    {k:'extra_stop',l:'Extra Stop',u:'\u20ac'},{k:'notte',l:'Sosta Notte',u:'\u20ac'},\n    {k:'congestion_liv',l:'Congestion Livorno',u:'\u20ac'},{k:'congestion_spe',l:'Congestion La Spezia',u:'\u20ac'},\n    {k:'reefer_perc',l:'Reefer %',u:'%',h:'Su base+fuel'}\n  ];\n  if(isKm)addFlds=addFlds.concat([\n    {k:'km_min',l:'Minimo KM',u:'km',h:'km reali < soglia \u2192 addebita per soglia (0 = nessuno)'},\n    {k:'cost_min',l:'Minimo addebito',u:'\u20ac',h:'costo < soglia \u2192 applica soglia come minimo (0 = nessuno)'}\n  ]);\n  var addH='<div class=\"row3\">';\n  addFlds.forEach(function(f){\n    addH+='<label class=\"field\"><span class=\"lbl\">'+f.l+(f.h?' <span class=\"hint\">&#8212; '+f.h+'</span>':'')+' <span class=\"unit\">'+f.u+'</span></span>'\n      +'<input type=\"number\" class=\"add-field\" data-key=\"'+f.k+'\" min=\"0\" step=\"0.01\" value=\"'+(add[f.k]||'')+'\" placeholder=\"0\"></label>';\n  });\n  addH+='</div>';\n\n  /* Tariff preview */\n  var prevH='';\n  if(rows.length){\n    if(isKm){\n      prevH='<table class=\"tt\"><thead><tr><th>KM</th><th>Costo 20\\'</th><th>Costo 40\\'</th></tr></thead><tbody>';\n      rows.slice(0,15).forEach(function(r){prevH+='<tr><td>'+r.km+'</td><td>\u20ac'+r.c20+'</td><td>\u20ac'+r.c40+'</td></tr>';});\n    }else{\n      prevH='<table class=\"tt\"><thead><tr><th>Localit&#xE0;</th><th>Prov</th><th>CAP</th><th>KM</th><th>20\\'</th><th>40\\'</th></tr></thead><tbody>';\n      rows.slice(0,15).forEach(function(r){prevH+='<tr><td>'+u(r.localita||'')+'</td><td>'+(r.prov||'')+'</td><td>'+(r.cap||'')+'</td><td>'+(r.km||'')+'</td><td>\u20ac'+(r.c20||'')+'</td><td>\u20ac'+(r.c40||'')+'</td></tr>';});\n    }\n    prevH+='</tbody></table>';\n    if(rows.length>15)prevH+='<div class=\"more\">...+'+(rows.length-15)+' righe</div>';\n  }else{\n    prevH='<div class=\"empty-rows\">Nessun tariffario. Importa un file Excel.</div>';\n  }\n\n  /* Mapping colonne (solo tipo localita) */\n  var _cm=v.colMap||{};\n  var _isKm=isKm;\n  var _mapFlds=_isKm\n    ?[{k:'km',l:'KM'},\n      {k:'c20',l:'Costo 20\\'\"'},{k:'c40',l:'Costo 40\\' (vuoto=usa 20\\')'}]\n    :[{k:'localita',l:'Localit\\u00e0'},{k:'cap',l:'CAP'},{k:'prov',l:'Prov'},\n      {k:'km',l:'KM A/R'},{k:'c20',l:'Costo 20\\'\"'},{k:'c40',l:'Costo 40\\''}];\n  var _mapNote=_isKm\n    ?'Inserisci il nome della colonna KM del file. Costo 40\\' vuoto = usa Costo 20\\' per tutti i tipi container.'\n    :'Inserisci il nome esatto dell\\'intestazione Excel.';\n  var _mapIn='';\n  _mapFlds.forEach(function(f){\n    _mapIn+='<label class=\"field\"><span class=\"lbl\">'+f.l+'</span>'\n      +'<input type=\"text\" class=\"col-field\" data-key=\"'+f.k+'\" '\n      +'value=\"'+(_cm[f.k]||'')+'\" placeholder=\"colonna nel file Excel\"></label>';\n  });\n  var mapH='<div id=\"colmap-panel\" style=\"display:none\">';\n  mapH+='<div class=\"card-title\" style=\"margin-top:10px\">Mapping colonne Excel</div>';\n  mapH+='<p style=\"font-size:11px;color:#888;margin-bottom:8px\">'+_mapNote+'</p>';\n  mapH+='<div class=\"row2\" style=\"margin-bottom:8px\">'+_mapIn+'</div>';\n  mapH+='<button class=\"btn btn-sm btn-save\" onclick=\"saveColMap()\">Salva mapping</button></div>';\n\n  document.getElementById('editor').className='';\n  document.getElementById('editor').innerHTML=\n    '<div class=\"card\">'\n    +'<div class=\"card-title\">Anagrafica</div>'\n    +'<div class=\"row2\" style=\"margin-bottom:10px\">'\n    +'<label class=\"field\"><span class=\"lbl\">Nome vettore</span><input type=\"text\" id=\"v-nome\" value=\"'+u(v.nome)+'\"></label>'\n    +'<div><div class=\"lbl\" style=\"margin-bottom:6px\">Tipo tariffario</div>'\n    +'<div class=\"radios\">'\n    +'<label><input type=\"radio\" name=\"v-tipo\" value=\"localita\"'+(v.tipo==='localita'?' checked':'')+'>Per Localit&#xE0;</label>'\n    +'<label><input type=\"radio\" name=\"v-tipo\" value=\"km_nuovo\"'+(v.tipo==='km_nuovo'?' checked':'')+'>KM (nuovo dist.)</label>'\n    +'<label><input type=\"radio\" name=\"v-tipo\" value=\"km_vecchio\"'+(v.tipo==='km_vecchio'?' checked':'')+'>KM (vecchio dist.)</label>'\n    +'</div></div></div>'\n    +'<div class=\"lbl\" style=\"margin-bottom:6px\">Porti operativi</div>'\n    +'<div class=\"checks\">'\n    +'<label><input type=\"checkbox\" id=\"v-spe\"'+(v.porti.indexOf('ITSPE')>=0?' checked':'')+'>La Spezia</label>'\n    +'<label><input type=\"checkbox\" id=\"v-liv\"'+(v.porti.indexOf('ITLIV')>=0?' checked':'')+'>Livorno</label>'\n    +'</div>'\n    +'<label class=\"field\" style=\"margin-top:10px\"><span class=\"lbl\">Note</span>'\n    +'<textarea id=\"v-note\" rows=\"2\" style=\"padding:7px;border:1px solid #d0d7de;border-radius:5px;font-size:12px;width:100%;resize:vertical;box-sizing:border-box\">'+(v.note||'')+'</textarea></label>'\n    +'<div class=\"btn-row\" style=\"margin-top:12px\">'\n    +'<button class=\"btn btn-save\" onclick=\"saveAnagrafica()\">&#x1F4BE; Salva</button>'\n    +'<button class=\"btn btn-del\" onclick=\"deleteVettore()\">&#x1F5D1; Elimina</button>'\n    +'</div></div>'\n\n    +'<div class=\"card\">'\n    +'<div class=\"card-title\">Addizionali</div>'\n    +addH\n    +'<div class=\"btn-row\" style=\"margin-top:12px\">'\n    +'<button class=\"btn btn-save\" onclick=\"saveAddizionali()\">&#x1F4BE; Salva addizionali</button>'\n    +'</div></div>'\n\n    +'<div class=\"card\">'\n    +'<div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px\">'\n    +'<div class=\"card-title\" style=\"margin:0\">Tariffario <span style=\"font-weight:normal;color:#aaa\">('+rows.length+' righe)</span></div>'\n    +'<div style=\"display:flex;gap:6px\">'\n    +'<button class=\"btn btn-sm\" style=\"background:#7d6608;color:white\" onclick=\"toggleColMap()\">&#x2699; Colonne</button>'\n    +'<input type=\"file\" id=\"inp-xls\" accept=\".xlsx,.xls\" style=\"display:none\" onchange=\"importExcel(this)\">'\n    +'<button class=\"btn btn-sm btn-imp\" onclick=\"document.getElementById(\\'inp-xls\\').click()\">&#x1F4C2; Carica Excel</button>'\n    +(rows.length?'<button class=\"btn btn-sm\" style=\"background:#7f8c8d;color:white\" onclick=\"clearTariffe()\">&#x2716; Svuota</button>':'')\n    +'</div></div>'\n    +mapH\n    +prevH\n    +'</div>';\n}\n\n/* \u2500\u2500 CRUD \u2500\u2500 */\nfunction saveAnagrafica(){\n  var v=_registry.find(function(x){return x.id===_selected;});if(!v)return;\n  v.nome=document.getElementById('v-nome').value.trim()||v.nome;\n  v.tipo=document.querySelector('input[name=\"v-tipo\"]:checked').value;\n  var noteEl=document.getElementById('v-note');if(noteEl)v.note=noteEl.value.trim();\n  v.porti=[];\n  if(document.getElementById('v-spe').checked)v.porti.push('ITSPE');\n  if(document.getElementById('v-liv').checked)v.porti.push('ITLIV');\n  pushRegistry();renderSidebar();setStatus('Anagrafica salvata \\u2713');\n}\nfunction saveAddizionali(){\n  var v=_registry.find(function(x){return x.id===_selected;});if(!v)return;\n  v.add={};\n  document.querySelectorAll('.add-field').forEach(function(el){v.add[el.dataset.key]=el.value.trim();});\n  pushRegistry();\n  // Aggiorna anche il file individuale con i nuovi add (mantiene sync)\n  var _fn='tcp_vettore_'+_selected+'.json';\n  var _fc=JSON.stringify({id:_selected,nome:v.nome,tipo:v.tipo,porti:v.porti,add:v.add||{},colMap:v.colMap||{},rows:_tariffe[_selected]||[],updated_at:new Date().toISOString()},null,2);\n  var _tok=localStorage.getItem(_TK_KEY);\n  if(_tok){var _ff={};_ff[_fn]={content:_fc};\n    fetch('https://api.github.com/gists/'+_GID,{method:'PATCH',headers:{'Authorization':'token '+_tok,'Content-Type':'application/json'},body:JSON.stringify({files:_ff})}).catch(function(){});}\n  // Notifica main page\n  if(window.opener&&window.opener._gccOnVettoriTariffeUpdated)\n    try{window.opener._gccOnVettoriTariffeUpdated(_selected,_tariffe[_selected]||[],v.add,v.colMap||{});}catch(e){}\n  setStatus('Addizionali salvati \\u2713');\n}\nfunction saveColMap(){\n  var v=_registry.find(function(x){return x.id===_selected;});if(!v)return;\n  v.colMap={};\n  document.querySelectorAll('.col-field').forEach(function(el){v.colMap[el.dataset.key]=el.value.trim();});\n  pushRegistry();setStatus('Mapping colonne salvato \\u2713');\n}\nfunction toggleColMap(){\n  var p=document.getElementById('colmap-panel');\n  if(p)p.style.display=p.style.display==='none'?'block':'none';\n}\nfunction deleteVettore(){\n  if(!confirm('Eliminare '+(_registry.find(function(x){return x.id===_selected;})||{}).nome+'?'))return;\n  _registry=_registry.filter(function(x){return x.id!==_selected;});\n  _selected=null;\n  pushRegistry();renderSidebar();\n  document.getElementById('editor').className='empty';\n  document.getElementById('editor').innerHTML='<span>Seleziona un vettore</span>';\n  setStatus('Vettore eliminato');\n}\nfunction nuovoVettore(){\n  var nome=prompt('Nome del nuovo vettore:');if(!nome||!nome.trim())return;\n  var id=nome.trim().toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now().toString(36);\n  _registry.push({id:id,nome:nome.trim(),porti:['ITSPE'],tipo:'localita',add:{},colMap:{}});\n  pushRegistry();renderSidebar();selectV(id);\n}\nfunction clearTariffe(){\n  if(!confirm('Svuotare le tariffe?'))return;\n  _tariffe[_selected]=[];\n  pushTariffe(_selected);selectV(_selected);setStatus('Tariffe svuotate');\n}\n\n/* \u2500\u2500 Import Excel \u2500\u2500 */\nfunction importExcel(inp){\n  var f=inp.files[0];if(!f)return;\n  var v=_registry.find(function(x){return x.id===_selected;});\n  var isKm=v&&v.tipo!=='localita';\n  var cm=v.colMap||{localita:'Localita',cap:'CAP',prov:'Prov',km:'KM',c20:'C20',c40:'C40'};\n  var reader=new FileReader();\n  reader.onload=function(ev){\n    try{\n      var wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});\n      var rows=[];\n      wb.SheetNames.forEach(function(sn){\n        var rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:'',raw:true});\n        rr.forEach(function(r){\n          var row={};Object.keys(r).forEach(function(k){row[k.trim()]=r[k];});\n          if(isKm){\n            var cmap=v&&v.colMap||{};\n            var kmK=cmap.km||'km'; // singola colonna km\n            var c2K=cmap.c20||'C20';\n            var c4K=cmap.c40||'';\n            var gv2=function(r,k){return r[k]!==undefined?String(r[k]).trim():'';};\n            var kv=gv2(row,kmK)||gv2(row,'km')||gv2(row,'KM')||'';\n            var c2=gv2(row,c2K)||gv2(row,'COSTO')||gv2(row,'C20')||gv2(row,'costo_20')||'';\n            var c4=c4K?gv2(row,c4K):'';\n            if(kv&&c2)rows.push({km:kv,c20:c2,c40:c4||c2});\n}else{\n            var loc=String(row[cm.localita]||row['Localita']||row['localita']||row['Localit\\u00e0']||'').trim();\n            var cap=String(row[cm.cap]||row['CAP']||row['cap']||'').trim();\n            var prov=String(row[cm.prov]||row['Prov']||row['prov']||'').trim();\n            var km=String(row[cm.km]||row['KM']||row['km']||'').trim();\n            var c2=String(row[cm.c20]||row['C20']||row['c20']||row['costo_20']||'').trim();\n            var c4=String(row[cm.c40]||row['C40']||row['c40']||row['costo_40']||'').trim();\n            if(loc)rows.push({cap:cap,prov:prov,localita:loc,km:km,c20:c2,c40:c4});\n          }\n        });\n      });\n      if(!rows.length){alert('Nessuna riga trovata.\\nColonne attese:\\n'+(isKm?'KM_DA, KM_A, C20, C40':'Configura il mapping con \u2699 Colonne'));return;}\n      _tariffe[_selected]=rows;\n      pushTariffe(_selected);selectV(_selected);\n      setStatus('Importate '+rows.length+' tariffe \\u2713');\n    }catch(e){alert('Errore: '+e.message);}\n  };\n  reader.readAsArrayBuffer(f);inp.value='';\n}\n\n/* \u2500\u2500 Gist (unico storage) \u2500\u2500 */\nvar _pushing=false;\nfunction pushRegistry(){\n  if(window.opener&&window.opener._gccOnVettoriSaved)\n    try{window.opener._gccOnVettoriSaved(_registry);}catch(e){}\n  // Salva in localStorage come backup immediato\n  try{localStorage.setItem(_LS_REG,JSON.stringify({vettori:_registry,tariffe:_tariffe,ts:Date.now()}));}catch(e){}\n  var tok=localStorage.getItem(_TK_KEY);if(!tok)return;\n  var content=JSON.stringify({vettori:_registry,updated_at:new Date().toISOString()},null,2);\n  var files={};files[_REG_FILE]={content:content};\n  _push(files);\n}\nfunction pushTariffe(id){\n  var v=_registry.find(function(x){return x.id===id;});if(!v)return;\n  // Aggiorna localStorage con le nuove tariffe\n  _tariffe[id]=_tariffe[id]||[];\n  try{localStorage.setItem(_LS_REG,JSON.stringify({vettori:_registry,tariffe:_tariffe,ts:Date.now()}));}catch(e){}\n  var fname='tcp_vettore_'+id+'.json';\n  var content=JSON.stringify({id:id,nome:v.nome,tipo:v.tipo,porti:v.porti,add:v.add||{},colMap:v.colMap||{},rows:_tariffe[id]||[],updated_at:new Date().toISOString()},null,2);\n  var files={};files[fname]={content:content};\n  // Notifica il main page: rows + add + colMap tutti aggiornati\n  if(window.opener&&window.opener._gccOnVettoriTariffeUpdated)\n    try{window.opener._gccOnVettoriTariffeUpdated(id,_tariffe[id]||[],v.add||{},v.colMap||{});}catch(e){}\n  _push(files);\n}\nfunction _push(files){\n  var tok=localStorage.getItem(_TK_KEY);if(!tok){setStatus('\\u26A0 Token non configurato');return;}\n  setStatus('\\u23F3 Salvataggio Gist...');\n  fetch('https://api.github.com/gists/'+_GID,{\n    method:'PATCH',\n    headers:{'Authorization':'token '+tok,'Content-Type':'application/json'},\n    body:JSON.stringify({files:files})\n  }).then(function(r){setStatus(r.ok?'\\u2705 Gist aggiornato':'\\u26A0 Gist errore '+r.status);})\n   .catch(function(e){setStatus('\\u26A0 '+e.message);});\n}\nfunction syncFromGist(){\n  var tok=localStorage.getItem(_TK_KEY);if(!tok){alert('Token non configurato.');return;}\n  setStatus('\\u23F3 Caricamento dal Gist...');\n  fetch('https://api.github.com/gists/'+_GID,{\n    headers:{'Authorization':'token '+tok,'Accept':'application/vnd.github.v3+json'}\n  }).then(function(r){return r.ok?r.json():null;})\n  .then(function(gd){\n    if(!gd){setStatus('\\u26A0 Errore accesso Gist');return;}\n    var rf=gd.files[_REG_FILE];\n    if(!rf){var _seed=[{\"id\": \"gavi\", \"nome\": \"Gavi\", \"porti\": [\"ITSPE\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"paglianiti\", \"nome\": \"Paglianiti\", \"porti\": [\"ITSPE\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"romeo\", \"nome\": \"Romeo\", \"porti\": [\"ITSPE\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"doublev\", \"nome\": \"Double V\", \"porti\": [\"ITSPE\", \"ITLIV\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"cfidenza\", \"nome\": \"C.Fidenza\", \"porti\": [\"ITSPE\", \"ITLIV\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"medlog\", \"nome\": \"Medlog\", \"porti\": [\"ITSPE\", \"ITLIV\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"trg\", \"nome\": \"TRG\", \"porti\": [\"ITSPE\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"truckrail\", \"nome\": \"Truck Rail\", \"porti\": [\"ITSPE\"], \"tipo\": \"km_nuovo\", \"add\": {}, \"colMap\": {}}, {\"id\": \"baccetti\", \"nome\": \"Baccetti\", \"porti\": [\"ITSPE\", \"ITLIV\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"silt\", \"nome\": \"Silt\", \"porti\": [\"ITSPE\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"gmt\", \"nome\": \"GMT\", \"porti\": [\"ITLIV\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"martelli\", \"nome\": \"Martelli\", \"porti\": [\"ITLIV\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}, {\"id\": \"rat\", \"nome\": \"Rat\", \"porti\": [\"ITLIV\"], \"tipo\": \"localita\", \"add\": {}, \"colMap\": {}}];_registry=_seed;pushRegistry();renderSidebar();setStatus('\\u2705 Registry inizializzato con '+_registry.length+' vettori');return;}\n    var p=rf.truncated?fetch(rf.raw_url).then(function(r){return r.json();}):Promise.resolve(JSON.parse(rf.content));\n    p.then(function(rd){\n      _registry=rd.vettori||[];\n      var proms=_registry.map(function(v){\n        var fname='tcp_vettore_'+v.id+'.json';\n        var f=gd.files[fname];if(!f)return Promise.resolve();\n        var fp=f.truncated?fetch(f.raw_url).then(function(r){return r.json();}):Promise.resolve(JSON.parse(f.content));\n        return fp.then(function(d){if(d){if(d.rows&&d.rows.length)_tariffe[v.id]=d.rows;if(d.colMap)v.colMap=d.colMap;if(window.opener&&window.opener._gccOnVettoriTariffeUpdated)try{window.opener._gccOnVettoriTariffeUpdated(v.id,_tariffe[v.id]||[],v.add||{},v.colMap||{});}catch(e){}}});\n      });\n      Promise.all(proms).then(function(){\n        renderSidebar();\n        if(_selected)selectV(_selected);\n        // Salva tutto su localStorage dopo sync\n        try{localStorage.setItem(_LS_REG,JSON.stringify({vettori:_registry,tariffe:_tariffe,ts:Date.now()}));}catch(e){}\n        setStatus('\\u2705 Sync OK \\u2014 '+_registry.length+' vettori');\n        // Notifica main page di tutte le tariffe + addizionali\n        if(window.opener&&window.opener._gccOnVettoriTariffeUpdated){\n          _registry.forEach(function(v){\n            try{window.opener._gccOnVettoriTariffeUpdated(v.id,_tariffe[v.id]||[],v.add||{},v.colMap||{});}catch(e){}\n          });\n        }\n      });\n    });\n  }).catch(function(e){setStatus('\\u26A0 '+e.message);});\n}\n\n/* \u2500\u2500 Helpers \u2500\u2500 */\nfunction setStatus(m){document.getElementById('status').textContent=m;}\n\n/* \u2500\u2500 Init: carica dal Gist al primo avvio \u2500\u2500 */\nwindow.onload=function(){\n  var s=document.createElement('script');\n  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';\n  s.onload=function(){\n    // Prima: carica da localStorage (risposta immediata)\n    try{\n      var cached=localStorage.getItem(_LS_REG);\n      if(cached){var d=JSON.parse(cached);if(d.vettori&&d.vettori.length){\n        _registry=d.vettori;_tariffe=d.tariffe||{};\n        renderSidebar();setStatus('\\u23F3 Aggiornamento dal Gist...');\n      }}\n    }catch(e){}\n    // Poi: sincronizza dal Gist\n    syncFromGist();\n  };\n  document.head.appendChild(s);\n};\n";
 
-      + '    return "<div style=\'padding:3px 0;border-bottom:1px solid #f0f0f0\'>"'
+    var _html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Gestione Vettori</title><style>*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}body{background:#f0f3f6;height:100vh;display:flex;flex-direction:column;overflow:hidden}#topbar{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#6c3483,#9b59b6);color:white;padding:9px 16px;flex-shrink:0}#topbar h2{font-size:14px;font-weight:bold;flex:1}.tbtn{padding:6px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;color:white}#main{display:flex;flex:1;overflow:hidden}#sidebar{width:200px;background:white;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;flex-shrink:0}#sidebar-header{padding:9px 12px;border-bottom:1px solid #eee;font-size:11px;font-weight:bold;color:#888;display:flex;align-items:center;justify-content:space-between}#btn-nuovo{padding:3px 10px;background:#9b59b6;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold}#vlist{flex:1;overflow-y:auto}.vitem{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f5f5f5;display:flex;flex-direction:column;gap:3px}.vitem:hover{background:#f8f0ff}.vitem.active{background:#ede0f8;border-left:3px solid #9b59b6}.vname{font-size:13px;font-weight:bold;color:#333}.vbadges{display:flex;gap:3px;flex-wrap:wrap}.badge{padding:1px 5px;border-radius:10px;font-size:9px;font-weight:bold;color:white}.badge-spe{background:#2980b9}.badge-liv{background:#27ae60}.badge-km{background:#e67e22}#editor{flex:1;overflow-y:auto;padding:18px}#editor.empty{display:flex;align-items:center;justify-content:center;color:#bbb;font-size:13px}.card{background:white;border-radius:10px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.07)}.card-title{font-size:11px;font-weight:bold;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}label.field{display:flex;flex-direction:column;gap:3px}.lbl{font-size:11px;font-weight:bold;color:#555}.hint{font-size:10px;color:#aaa}.unit{font-size:10px;color:#aaa}input[type=text],input[type=number]{padding:6px 9px;border:1px solid #d0d7de;border-radius:5px;font-size:13px;width:100%;transition:border .2s}input:focus{outline:none;border-color:#9b59b6;box-shadow:0 0 0 2px rgba(155,89,182,.15)}.checks{display:flex;gap:14px;margin-top:4px}.checks label{display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer}.radios{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}.radios label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer}.btn-row{display:flex;gap:7px}.btn{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold}.btn-sm{padding:4px 10px;font-size:11px}.btn-save{background:#27ae60;color:white}.btn-del{background:#e74c3c;color:white}.btn-imp{background:#e67e22;color:white}.tt{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}.tt th{background:#6c3483;color:white;padding:5px 7px;text-align:left}.tt td{padding:4px 7px;border-bottom:1px solid #f0f0f0}.tt tr:hover td{background:#f8f0ff}.more{font-size:11px;color:#aaa;padding:5px 0}.empty-rows{color:#bbb;font-size:12px;padding:8px 0}#status{font-size:11px;color:rgba(255,255,255,.8);margin-right:4px}</style></head><body><div id=\"topbar\"><h2>&#x1F69A; Gestione Vettori</h2><span id=\"status\"></span><button class=\"tbtn\" onclick=\"syncFromGist()\" style=\"background:#2980b9\">&#x21C5; Sync Gist</button><button class=\"tbtn\" onclick=\"window.close()\" style=\"background:#7f8c8d;margin-left:4px\">Chiudi</button></div><div id=\"main\"><div id=\"sidebar\"><div id=\"sidebar-header\">VETTORI <button id=\"btn-nuovo\" onclick=\"nuovoVettore()\">+ Nuovo</button></div><div id=\"vlist\"></div></div><div id=\"editor\" class=\"empty\"><span>Seleziona un vettore dalla lista</span></div></div>"
       + '<scr'+'ipt>' + _initVars + _fns + '<\/scr'+'ipt>'
       + '</body></html>';
 
@@ -1375,15 +1366,18 @@
       + '</div>'
       + '<div class="sec-note">Calcolo: <b>subtotale &#215; %</b> &#8212; se il risultato &egrave; inferiore al minimo viene usato il minimo.</div>'
       + '</div>'
-      + '<div class="section"><div class="sec-header" style="background:#d35400">&#x26FD; Gestione Fuel Parziali Concordati</div>'
+      + '<div class="section">'
+      + '<div class="sec-header" style="background:#d35400">&#x26FD; Gestione Fuel Parziali Concordati</div>'
       + '<div style="padding:14px 16px">'
-      + '<p style="font-size:11px;color:#888;margin-bottom:12px">Aumenta o diminuisci il fuel % di tutti i concordati che hanno un fuel personalizzato impostato. Inserisci il delta (es. <b>+1</b> o <b>-0.5</b>).</p>'
-      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
-      + '<label style="font-size:12px;font-weight:bold;color:#555">Delta %<br><input type="number" id="bulk-fuel-delta" step="0.1" placeholder="es. +1 o -0.5" style="width:120px;padding:7px 10px;border:1px solid #d0d7de;border-radius:5px;font-size:14px;margin-top:4px"></label>'
-      + '<button id="btn-apply-bulk" style="margin-top:20px;padding:8px 16px;background:#d35400;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold">&#x26FD; Applica</button>'
+      + '<p style="font-size:11px;color:#888;margin-bottom:10px">Aggiorna il fuel % di tutti i concordati con fuel personalizzato. Es: <b>+1</b> aumenta di 1%, <b>-0.5</b> diminuisce di 0.5%.</p>'
+      + '<div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px">'
+      + '<label style="font-size:12px;font-weight:bold;color:#555;display:flex;flex-direction:column;gap:4px">Delta %'
+      + '<input type="number" id="fuel-delta" step="0.1" placeholder="es. +1 o -0.5" style="width:110px;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px">'
+      + '</label>'
+      + '<button id="btn-apply-fuel" style="padding:8px 14px;background:#d35400;color:white;border:none;border-radius:5px;cursor:pointer;font-weight:bold;font-size:13px">&#x26FD; Applica</button>'
       + '</div>'
-      + '<div id="fuel-history-wrap"><p style="font-size:11px;font-weight:bold;color:#555;margin-bottom:6px">Storico aggiornamenti:</p>'
-      + '<div id="fuel-history" style="font-size:11px;color:#777;max-height:150px;overflow-y:auto;border:1px solid #eee;border-radius:5px;padding:8px">Nessun aggiornamento registrato.</div>'
+      + '<div><b style="font-size:11px;color:#555">Storico aggiornamenti:</b>'
+      + '<div id="fuel-hist" style="margin-top:5px;font-size:11px;color:#777;max-height:130px;overflow-y:auto;border:1px solid #eee;border-radius:4px;padding:6px">Nessun aggiornamento.</div>'
       + '</div></div></div>';
 
     var allKeys = JSON.stringify(Object.keys(add));
@@ -1403,46 +1397,43 @@
       + 'var _GFA="' + GIST_FILE_ADD + '";'
       + 'var _TK="' + LS_TOKEN + '";'
       + 'var _keys=' + allKeys + ';'
-      + 'var _LS_FH="tcp_fuel_history";'
-      + 'function renderHistory(){'
-      + '  var raw=localStorage.getItem(_LS_FH);var list=[];'
-      + '  try{if(raw)list=JSON.parse(raw);}catch(e){}'
-      + '  var el=document.getElementById("fuel-history");if(!el)return;'
-      + '  if(!list.length){el.innerHTML="<i>Nessun aggiornamento registrato.</i>";return;}'
-      + '  el.innerHTML=list.slice().reverse().map(function(h){'
-      + '    var d=h.delta>0?"+":"";'
-      + '    var r="<div>"+(h.date||"")+" delta: "+d+h.delta+"% \u2014 "+h.count+" concordati aggiornati</div>";'
-      + '    return r;'
-      + '  }).join("");'
+      + 'var _LFH="tcp_fuel_history";'
+      + 'function _renderHist(){'
+      +   'var el=document.getElementById("fuel-hist");if(!el)return;'
+      +   'var raw=localStorage.getItem(_LFH);var list=[];'
+      +   'try{if(raw)list=JSON.parse(raw);}catch(ex){}'
+      +   'if(!list.length){el.textContent="Nessun aggiornamento.";return;}'
+      +   'var h="";'
+      +   'list.slice().reverse().forEach(function(x){'
+      +     'h+="<div>"+x.d+" | "+(x.dl>0?"+":"")+x.dl+"% | "+x.c+" concordati</div>";'
+      +   '});'
+      +   'el.innerHTML=h;'
       + '}'
-      + 'function applyBulkFuel(){'
-      + '  var delta=parseFloat(document.getElementById("bulk-fuel-delta").value);'
-      + '  if(isNaN(delta)||delta===0){alert("Inserisci un delta valido (es. +1 o -0.5)");return;}'
-      + '  var lsKey="tcp_listino";'
-      + '  var raw=localStorage.getItem(lsKey);if(!raw){alert("Nessun listino trovato. Calcola prima i concordati.");return;}'
-      + '  try{'
-      + '    var ls=JSON.parse(raw);var cnt=0;'
-      + '    ls.rows.forEach(function(r){'
-      + '      var cur=parseFloat(r.fuel_perc_custom||0);'
-      + '      if(cur>0){'
-      + '        var nv=Math.round((cur+delta)*10)/10;'
-      + '        if(nv<0)nv=0;'
-      + '        r.fuel_perc_custom=String(nv);cnt++;'
-      + '      }'
-      + '    });'
-      + '    localStorage.setItem(lsKey,JSON.stringify(ls));'
-      + '    var hist=[];try{var hr=localStorage.getItem(_LS_FH);if(hr)hist=JSON.parse(hr);}catch(e){}'
-      + '    var now=new Date();var ds=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");'
-      + '    hist.push({date:ds,delta:delta,count:cnt});'
-      + '    if(hist.length>50)hist=hist.slice(-50);'
-      + '    try{localStorage.setItem(_LS_FH,JSON.stringify(hist));}catch(e){}'
-      + '    renderHistory();'
-      + '    alert("\u2705 Aggiornati "+cnt+" concordati. | Delta: "+(delta>0?"+":"")+delta+"% | Riapri i concordati per vedere i nuovi valori.");'
-      + '  }catch(e){alert("Errore: "+e.message);}'
+      + 'function _applyFuel(){'
+      +   'var dv=document.getElementById("fuel-delta");'
+      +   'var delta=dv?parseFloat(dv.value):NaN;'
+      +   'if(isNaN(delta)||delta===0){alert("Inserisci un delta valido (es. +1 o -0.5).");return;}'
+      +   'var raw=localStorage.getItem("tcp_listino");'
+      +   'if(!raw){alert("Calcola prima i concordati.");return;}'
+      +   'try{'
+      +     'var ls=JSON.parse(raw);var cnt=0;'
+      +     'ls.rows.forEach(function(r){'
+      +       'var cur=parseFloat(r.fuel_perc_custom||0);'
+      +       'if(cur>0){var nv=Math.round((cur+delta)*10)/10;if(nv<0)nv=0;r.fuel_perc_custom=String(nv);cnt++;}'
+      +     '});'
+      +     'localStorage.setItem("tcp_listino",JSON.stringify(ls));'
+      +     'var hist=[];try{var hr=localStorage.getItem(_LFH);if(hr)hist=JSON.parse(hr);}catch(ex){}'
+      +     'var now=new Date();'
+      +     'var ds=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");'
+      +     'hist.push({d:ds,dl:delta,c:cnt});if(hist.length>50)hist=hist.slice(-50);'
+      +     'try{localStorage.setItem(_LFH,JSON.stringify(hist));}catch(ex){}'
+      +     '_renderHist();'
+      +     'alert("Aggiornati "+cnt+" concordati. Delta: "+(delta>0?"+":"")+delta+"%. Riapri i concordati per vedere le modifiche.");'
+      +   '}catch(ex){alert("Errore: "+ex.message);}'
       + '}'
+      + 'document.getElementById("btn-apply-fuel").addEventListener("click",_applyFuel);'
+      + '_renderHist();'
       + 'document.getElementById("btn-chiudi").onclick=function(){window.close();};'
-      + 'document.getElementById("btn-apply-bulk").onclick=applyBulkFuel;'
-      + 'renderHistory();'
       + 'document.getElementById("btn-salva").onclick=function(){'
       + 'var n={};_keys.forEach(function(k){var e=document.getElementById("add-"+k);n[k]=e?e.value.trim():"";});'
       + 'try{localStorage.setItem(_LS,JSON.stringify(n));}catch(e){}'
@@ -1585,7 +1576,7 @@
       '}'+
 
       'var TRATTA_FLDS=["traffic_type","committente","luogo_1","luogo_2","delivery_place","porto_riferimento"];'+
-      'var COSTO_FLDS=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
+      'var COSTO_FLDS=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note","km_percorrenza"];'+
       'function fid(f){return "f-"+f.replace(/_/g,"-");}'+
 
       'function apriForm(idx){'+
@@ -1736,11 +1727,6 @@
             '<label class="full" style="background:#eaf4fb;padding:8px;border-radius:6px;border:1px solid #aed6f1">'+
               '&#x1F4CD; KM percorrenza viaggio'+
               '<input type="number" id="f-km-percorrenza" min="0" step="1" placeholder="vuoto = ignorato — richiesto per calcolo vettori su multi-stop">'+
-            '<\/label>'+
-          '<label class="full" style="background:#fdf2f8;padding:8px;border-radius:6px;border:1px solid #d7bde2;margin-top:4px">'+
-              '&#x1F50D; Forza localit\u00e0 CRT'+
-              '<small style="font-weight:normal;color:#999;display:block;margin:2px 0 4px">Se il matching automatico prende la localit\u00e0 sbagliata, scrivi qui il nome parziale di quella corretta.</small>'+
-              '<input type="text" id="f-crt-override" placeholder="es. PONTE MOTTA — vuoto = matching automatico">'+
             '<\/label>'+
             '<label class="full">Note<input type="text" id="f-note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
@@ -2085,7 +2071,6 @@
           equip:equipLabel(ct),
           note:m.note||'', data_validita:m.data_validita||'',
           kmManuale: parseFloat(m.km_percorrenza || 0),
-          crtOverride: m.crt_override || '',
           containerType:ct,
           containers:[]
         };
@@ -2436,23 +2421,7 @@
         'var t=ev.target;if(!t||t.tagName!=="TH"||!t.dataset||!t.dataset.tbody)return;'+
         'sortTable(t.dataset.tbody,parseInt(t.dataset.col));'+
       '});'+
-      'function aggiornaBulkFuel(){'+
-  'var globPerc=parseFloat(document.getElementById("fuel-perc").value)||0;'+
-  'var newPerc=parseFloat(prompt("Nuovo fuel % per i concordati con fuel personalizzato:\n(lascia vuoto per annullare)",globPerc||"17.5"));'+
-  'if(isNaN(newPerc)||newPerc<0){alert("Operazione annullata.");return;}'+
-  'try{'+
-    'var raw=localStorage.getItem(_LS_LISTINO);if(!raw)return;'+
-    'var ls=JSON.parse(raw);var cnt=0;'+
-    'ls.rows.forEach(function(r){'+
-      'if(r.fuel_perc_custom&&parseFloat(r.fuel_perc_custom)>0){'+
-        'r.fuel_perc_custom=String(newPerc);cnt++;'+
-      '}'+
-    '});'+
-    'localStorage.setItem(_LS_LISTINO,JSON.stringify(ls));'+
-    'alert("\u2705 Aggiornati "+cnt+" concordati con fuel personalizzato a "+newPerc+"%");'+
-  '}catch(e){alert("Errore: "+e.message);}'+
-'}'+
-'function fmtDate(el){var v=el.value.replace(/[^0-9]/g,"");if(v.length>4)v=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4,6);else if(v.length>2)v=v.slice(0,2)+"/"+v.slice(2);el.value=v;}'+
+      'function fmtDate(el){var v=el.value.replace(/[^0-9]/g,"");if(v.length>4)v=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4,6);else if(v.length>2)v=v.slice(0,2)+"/"+v.slice(2);el.value=v;}'+
       'var _mancanti='+JSON.stringify(mancanti)+';'+
       'var _mGruppiM='+JSON.stringify(mGruppiM)+';'+
       'var _trovati='+JSON.stringify(trovati)+';'+
@@ -2751,8 +2720,6 @@
         'if(elKm)elKm.value=(rigaLS&&rigaLS.km_percorrenza)?rigaLS.km_percorrenza:"";'+
         'var elFpc=document.getElementById("f_fuel_perc_custom");'+
         'if(elFpc)elFpc.value=(rigaLS&&rigaLS.fuel_perc_custom)?rigaLS.fuel_perc_custom:"";'+
-        'var elCOvr=document.getElementById("f_crt_override");'+
-        'if(elCOvr)elCOvr.value=(rigaLS&&rigaLS.crt_override)?rigaLS.crt_override:"";'+
         'var elFdc=document.getElementById("f_fuel_data_custom");'+
         'if(elFdc){var _td=new Date();var _d2=String(_td.getDate()).padStart(2,\'0\');var _m2=String(_td.getMonth()+1).padStart(2,\'0\');var _y2=String(_td.getFullYear()).slice(2);elFdc.value=(rigaLS&&rigaLS.fuel_data_custom)?rigaLS.fuel_data_custom:_d2+\'/\'+_m2+\'/\'+_y2;}'+
         'var elData=document.getElementById("f_data_validita");'+
@@ -2814,7 +2781,7 @@
         'if(_modalMode==="modifica"){salvaModifica();return;}'+
         'if(_idxCorrente===null)return;'+
         'var edit={};'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'edit.operatore=(document.getElementById("f_operatore")||{value:""}).value.trim().toUpperCase();'+
@@ -2841,7 +2808,6 @@
           'km_percorrenza:edit.km_percorrenza||"",' +
           'fuel_perc_custom:edit.fuel_perc_custom||"",' +
           'fuel_data_custom:edit.fuel_data_custom||"",' +
-          'crt_override:edit.crt_override||"",' +
           'operatore:edit.operatore||""'+
         '};'+
         'try{'+
@@ -2880,7 +2846,7 @@
       /* ── salva modifica (aggiorna riga esistente in LS) ── */
       'function salvaModifica(){'+
         'var edit={};'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'try{'+
@@ -2898,7 +2864,6 @@
                 'if(edit.km_percorrenza!==undefined)lsData.rows[i].km_percorrenza=edit.km_percorrenza||"";'+
                 'if(edit.fuel_perc_custom!==undefined)lsData.rows[i].fuel_perc_custom=edit.fuel_perc_custom||"";'+
                 'if(edit.fuel_data_custom!==undefined)lsData.rows[i].fuel_data_custom=edit.fuel_data_custom||"";'+
-                'if(edit.crt_override!==undefined)lsData.rows[i].crt_override=edit.crt_override||"";'+
               '}'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
@@ -3055,7 +3020,6 @@
             '<\/div>'+
           '<\/div>'+
           '<select id="print-sel" style="padding:5px 9px;border:1px solid #bbb;border-radius:5px;font-size:12px;cursor:pointer">'+'<option value="all">Stampa tutto</option>'+'<option value="trovati">Solo concordati</option>'+'<option value="mancanti">Solo mancanti</option>'+'</select> '+'<button id="btn-stampa">&#x1F5A8; Stampa<\/button>'+
-          '<button id="btn-bulk-fuel" style="padding:5px 10px;background:#e67e22;color:white;border:none;border-radius:5px;cursor:pointer;font-size:12px;margin-left:6px" title="Modifica tutti i fuel parziali">&#x26FD; Fuel Parziali</button>'+
         '<\/div>'+
       '<\/div>'+
 
@@ -3091,11 +3055,6 @@
             '<label class="full" style="background:#eaf4fb;padding:8px;border-radius:6px;border:1px solid #aed6f1;margin-top:4px">'+
               '&#x1F4CD; KM percorrenza viaggio'+
               '<input type="number" id="f_km_percorrenza" min="0" step="1" style="margin-top:4px" placeholder="vuoto = ignora | richiesto per calcolo vettori su multi-stop">'+
-            '<\/label>'+
-          '<label class="full" style="background:#fdf2f8;padding:8px;border-radius:6px;border:1px solid #d7bde2;margin-top:4px">'+
-              '&#x1F50D; Forza localit\u00e0 CRT'+
-              '<small style="font-weight:normal;color:#999;display:block;margin:2px 0 4px">Se il matching automatico prende la localit\u00e0 sbagliata, scrivi qui il nome parziale di quella corretta (es. PONTE MOTTA).</small>'+
-              '<input type="text" id="f_crt_override" style="margin-top:2px" placeholder="es. PONTE MOTTA — vuoto = usa matching automatico">'+
             '<\/label>'+
             '<label class="full">Note<input type="text" id="f_note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
