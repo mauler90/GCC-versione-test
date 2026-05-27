@@ -20,6 +20,8 @@
   var LS_VETTORI_REG        = 'tcp_gcc_vettori';
   var LS_KM_VECCHIO_LIV     = 'tcp_km_vecchio_liv';
   var LS_KM_VECCHIO_SPE     = 'tcp_km_vecchio_spe';
+  var GIST_FILE_KM_VECCHIO_LIV = 'tcp_km_vecchio_livorno.json';
+  var GIST_FILE_KM_VECCHIO_SPE = 'tcp_km_vecchio_laspezia.json';
   var _gcc_km_vecchio_rows  = [];
   var GIST_FILE_CRT_LIV = 'tcp_crt_livorno.json';
   var GIST_FILE_CRT_SPE = 'tcp_crt_laspezia.json';
@@ -2819,7 +2821,6 @@
 
       /* ── salva modale (nuovo inserimento da mancanti) ── */
       'function salvaModale(){'+
-        'alert("[DBG] salvaModale chiamata. _modalMode=" + _modalMode);'+
         'if(_modalMode==="modifica"){salvaModifica();return;}'+
         'if(_idxCorrente===null)return;'+
         'var edit={};'+
