@@ -2891,10 +2891,6 @@
         'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
-        '/* DEBUG TEMPORANEO */'+
-        'var _dbgEl=document.getElementById("f_crt_override");'+
-        'var _dbgVal=_dbgEl?_dbgEl.value:"ELEMENTO NON TROVATO";'+
-        'var _dbgEdit=edit["crt_override"];'+
         'try{'+
           'var lsRaw=localStorage.getItem(_LS_LISTINO);'+
           'if(lsRaw){'+
@@ -2913,10 +2909,12 @@
                 'if(edit.crt_override!==undefined)lsData.rows[i].crt_override=edit.crt_override||"";'+
               '}'+
             '});'+
+            'console.log("[GCC-DBG] f_crt_override:",document.getElementById("f_crt_override")?"TROVATO":"NULL");'+
+            'console.log("[GCC-DBG] edit.crt_override:",edit["crt_override"]);'+
+            'var _dbgMatch=0;lsData.rows.forEach(function(r){var k=[r.luogo_1,r.luogo_2,r.delivery_place,r.porto_riferimento,r.traffic_type,r.committente].map(function(v){return(v||"").toString().toLowerCase().trim();}).join("||");if(k===chiave)_dbgMatch++;});'+
+            'console.log("[GCC-DBG] chiave_match:",_dbgMatch,"chiave:",chiave.slice(0,50));'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
             'try{pushGist(lsData.rows);}catch(_pe){}'+
-            'var _dbgRows=lsData.rows.filter(function(r){var k=[r.luogo_1,r.luogo_2,r.delivery_place,r.porto_riferimento,r.traffic_type,r.committente].map(function(v){return(v||"").toString().toLowerCase().trim();}).join("||");return k===_chiaveCorrente;});'+
-            'alert("[DEBUG TEMPORANEO]\nelCO trovato: "+(_dbgEl?"SI":"NO")+"\nValore digitato: \""+_dbgVal+"\"\nedit.crt_override: \""+_dbgEdit+"\"\nRighe chiave trovate: "+_dbgRows.length+"\ncrt_override nel LS: \""+(_dbgRows[0]?(_dbgRows[0].crt_override||""):"n/a")+"\"");'+
           '}'+
         '}catch(err){console.warn("TCP: errore modifica",err);}'+
         'var gi=_giCorrente;'+
