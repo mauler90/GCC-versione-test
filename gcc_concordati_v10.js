@@ -2821,7 +2821,7 @@
         'if(_modalMode==="modifica"){salvaModifica();return;}'+
         'if(_idxCorrente===null)return;'+
         'var edit={};'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'edit.operatore=(document.getElementById("f_operatore")||{value:""}).value.trim().toUpperCase();'+
@@ -2887,7 +2887,7 @@
       /* ── salva modifica (aggiorna riga esistente in LS) ── */
       'function salvaModifica(){'+
         'var edit={};'+
-        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom"];'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note","km_percorrenza","fuel_perc_custom","fuel_data_custom","crt_override"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'try{'+
