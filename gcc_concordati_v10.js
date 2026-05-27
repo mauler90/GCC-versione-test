@@ -24,6 +24,7 @@
   var GIST_FILE_CRT_LIV = 'tcp_crt_livorno.json';
   var GIST_FILE_CRT_SPE = 'tcp_crt_laspezia.json';
   var GIST_FILE_ADD  = 'tcp_gcc_addizionali.json';
+  var GIST_FILE_FUEL_HIST = 'tcp_fuel_history.json';
   var LS_LISTINO_BASE = 'tcp_listino_base';
   var LS_VETTORI      = 'tcp_vettori';
   var LS_ADDIZIONALI  = 'tcp_gcc_addizionali';
@@ -355,6 +356,19 @@
       var isMultiStop = nStops > 1;
       var kmManuale = parseFloat(g.kmManuale || 0);
       if (kmManuale > 0) { kmCRT = kmManuale; kmBase = kmManuale; }
+      // Se crtOverride, ri-cerca la km corretta nel tariffario
+      if (g.crtOverride && !kmManuale && _gcc_crt_rows.length) {
+        try {
+          var _ovrRows = _gcc_crt_rows.filter(function(row) {
+            return row.localita && row.localita.toUpperCase().indexOf(g.crtOverride) >= 0
+              && (!row.porto || row.porto.toUpperCase() === g.porto.toUpperCase());
+          });
+          if (_ovrRows.length && _ovrRows[0].km) {
+            kmCRT = parseFloat(_ovrRows[0].km);
+            kmBase = kmCRT;
+          }
+        } catch(e) {}
+      }
 
       // Diagnostico: se registry vuoto o tariffe vuote, segnala
       if (!_gcc_vettori_reg.length) {
@@ -434,7 +448,7 @@
   //  MERGE / SYNC
   // ═══════════════════════════════════════════════
 
-  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','km_percorrenza','data_validita'];
+  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','km_percorrenza','fuel_perc_custom','fuel_data_custom','crt_override','data_validita'];
 
   function chiaveTratta(r) {
     return [norm(r.luogo_1),norm(r.luogo_2),norm(r.delivery_place),
@@ -1427,12 +1441,23 @@
       +     'var ds=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");'
       +     'hist.push({d:ds,dl:delta,c:cnt});if(hist.length>50)hist=hist.slice(-50);'
       +     'try{localStorage.setItem(_LFH,JSON.stringify(hist));}catch(ex){}'
+      +     'var _tk=localStorage.getItem(_TK);'
+      +     'if(_tk){fetch("https://api.github.com/gists/"+_GID,{method:"PATCH",headers:{"Authorization":"token "+_tk,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_fuel_history.json":{content:JSON.stringify({history:hist,updated_at:new Date().toISOString()})}}})}).catch(function(){});}'
       +     '_renderHist();'
-      +     'alert("Aggiornati "+cnt+" concordati. Delta: "+(delta>0?"+":"")+delta+"%. Riapri i concordati per vedere le modifiche.");'
+      +     'alert("Aggiornati "+cnt+" concordati. Delta: "+(delta>0?"+":"")+delta+"%. Riapri i concordati.");'
       +   '}catch(ex){alert("Errore: "+ex.message);}'
       + '}'
       + 'document.getElementById("btn-apply-fuel").addEventListener("click",_applyFuel);'
-      + '_renderHist();'
+      + '(function(){'
+      +   'var _t0=localStorage.getItem(_TK);'
+      +   'if(!_t0||localStorage.getItem(_LFH)){_renderHist();return;}'
+      +   'fetch("https://api.github.com/gists/"+_GID,{headers:{"Authorization":"token "+_t0,"Accept":"application/vnd.github.v3+json"}})'
+      +   '.then(function(r){return r.ok?r.json():null;})'
+      +   '.then(function(gd){if(!gd)return;var f=gd.files["tcp_fuel_history.json"];if(!f){_renderHist();return;}'
+      +     'var p=f.truncated?fetch(f.raw_url).then(function(r){return r.json();}):Promise.resolve(JSON.parse(f.content));'
+      +     'p.then(function(d){if(d&&d.history){try{localStorage.setItem(_LFH,JSON.stringify(d.history));}catch(ex){}}_renderHist();}).catch(function(){_renderHist();});'
+      +   '}).catch(function(){_renderHist();});'
+      + '})();'
       + 'document.getElementById("btn-chiudi").onclick=function(){window.close();};'
       + 'document.getElementById("btn-salva").onclick=function(){'
       + 'var n={};_keys.forEach(function(k){var e=document.getElementById("add-"+k);n[k]=e?e.value.trim():"";});'
@@ -1576,7 +1601,7 @@
       '}'+
 
       'var TRATTA_FLDS=["traffic_type","committente","luogo_1","luogo_2","delivery_place","porto_riferimento"];'+
-      'var COSTO_FLDS=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note","km_percorrenza"];'+
+      'var COSTO_FLDS=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note","km_percorrenza","crt_override"];'+
       'function fid(f){return "f-"+f.replace(/_/g,"-");}'+
 
       'function apriForm(idx){'+
@@ -1727,6 +1752,10 @@
             '<label class="full" style="background:#eaf4fb;padding:8px;border-radius:6px;border:1px solid #aed6f1">'+
               '&#x1F4CD; KM percorrenza viaggio'+
               '<input type="number" id="f-km-percorrenza" min="0" step="1" placeholder="vuoto = ignorato — richiesto per calcolo vettori su multi-stop">'+
+            '<\/label>'+
+            '<label class="full" style="background:#fdf2f8;padding:8px;border-radius:6px;border:1px solid #d7bde2;margin-top:2px">'+
+              '&#x1F50D; Forza localit\u00e0 CRT <small style="font-weight:normal;color:#aaa">(vuoto = automatico)</small>'+
+              '<input type="text" id="f-crt-override" style="margin-top:4px" placeholder="es. PONTE MOTTA — nome parziale nel tariffario CRT">'+
             '<\/label>'+
             '<label class="full">Note<input type="text" id="f-note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
@@ -2071,6 +2100,7 @@
           equip:equipLabel(ct),
           note:m.note||'', data_validita:m.data_validita||'',
           kmManuale: parseFloat(m.km_percorrenza || 0),
+          crtOverride: (m.crt_override || '').trim().toUpperCase(),
           containerType:ct,
           containers:[]
         };
@@ -2808,6 +2838,7 @@
           'km_percorrenza:edit.km_percorrenza||"",' +
           'fuel_perc_custom:edit.fuel_perc_custom||"",' +
           'fuel_data_custom:edit.fuel_data_custom||"",' +
+          'crt_override:edit.crt_override||"",' +
           'operatore:edit.operatore||""'+
         '};'+
         'try{'+
@@ -2864,6 +2895,7 @@
                 'if(edit.km_percorrenza!==undefined)lsData.rows[i].km_percorrenza=edit.km_percorrenza||"";'+
                 'if(edit.fuel_perc_custom!==undefined)lsData.rows[i].fuel_perc_custom=edit.fuel_perc_custom||"";'+
                 'if(edit.fuel_data_custom!==undefined)lsData.rows[i].fuel_data_custom=edit.fuel_data_custom||"";'+
+                'if(edit.crt_override!==undefined)lsData.rows[i].crt_override=edit.crt_override||"";'+
               '}'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
@@ -3055,6 +3087,10 @@
             '<label class="full" style="background:#eaf4fb;padding:8px;border-radius:6px;border:1px solid #aed6f1;margin-top:4px">'+
               '&#x1F4CD; KM percorrenza viaggio'+
               '<input type="number" id="f_km_percorrenza" min="0" step="1" style="margin-top:4px" placeholder="vuoto = ignora | richiesto per calcolo vettori su multi-stop">'+
+            '<\/label>'+
+            '<label class="full" style="background:#fdf2f8;padding:8px;border-radius:6px;border:1px solid #d7bde2;margin-top:2px">'+
+              '&#x1F50D; Forza localit\u00e0 CRT <small style="font-weight:normal;color:#aaa">(vuoto = automatico)</small>'+
+              '<input type="text" id="f_crt_override" style="margin-top:4px" placeholder="es. PONTE MOTTA — nome parziale nel tariffario CRT">'+
             '<\/label>'+
             '<label class="full">Note<input type="text" id="f_note" placeholder="annotazioni libere"><\/label>'+
           '<\/div>'+
