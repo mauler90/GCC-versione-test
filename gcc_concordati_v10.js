@@ -2898,7 +2898,7 @@
                 'if(edit.km_percorrenza!==undefined)lsData.rows[i].km_percorrenza=edit.km_percorrenza||"";'+
                 'if(edit.fuel_perc_custom!==undefined)lsData.rows[i].fuel_perc_custom=edit.fuel_perc_custom||"";'+
                 'if(edit.fuel_data_custom!==undefined)lsData.rows[i].fuel_data_custom=edit.fuel_data_custom||"";'+
-                'if(edit.crt_override!==undefined)lsData.rows[i].crt_override=edit.crt_override||"";\''+
+                'if(edit.crt_override!==undefined)lsData.rows[i].crt_override=edit.crt_override||"";'+
               '}'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
