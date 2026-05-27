@@ -2909,10 +2909,10 @@
                 'if(edit.crt_override!==undefined)lsData.rows[i].crt_override=edit.crt_override||"";'+
               '}'+
             '});'+
-            'console.log("[GCC-DBG] f_crt_override:",document.getElementById("f_crt_override")?"TROVATO":"NULL");'+
-            'console.log("[GCC-DBG] edit.crt_override:",edit["crt_override"]);'+
+            '(window.opener||window).console.log("[GCC-DBG] f_crt_override:",document.getElementById("f_crt_override")?"TROVATO":"NULL");'+
+            '(window.opener||window).console.log("[GCC-DBG] edit.crt_override:",edit["crt_override"]);'+
             'var _dbgMatch=0;lsData.rows.forEach(function(r){var k=[r.luogo_1,r.luogo_2,r.delivery_place,r.porto_riferimento,r.traffic_type,r.committente].map(function(v){return(v||"").toString().toLowerCase().trim();}).join("||");if(k===chiave)_dbgMatch++;});'+
-            'console.log("[GCC-DBG] chiave_match:",_dbgMatch,"chiave:",chiave.slice(0,50));'+
+            '(window.opener||window).console.log("[GCC-DBG] chiave_match:",_dbgMatch,"chiave:",chiave.slice(0,50));'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
             'try{pushGist(lsData.rows);}catch(_pe){}'+
           '}'+
