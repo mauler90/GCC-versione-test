@@ -2221,7 +2221,7 @@
         // Singola località: cerca nel CRT usando dati parsati (loc+prov+cap)
         var parsed0 = (g.indirizziParsed && g.indirizziParsed[0]) || null;
         // Priorità: 1) override trovati (crtOverride), 2) override mancanti (_locOverride), 3) auto
-        var _ovrStr = (g.crtOverride || _locOverride[g.chiave] || '').trim();
+        var _ovrStr = (g.crtOverride || (_locOverride && _locOverride[g.chiave]) || '').trim();
         var _searchInput = _ovrStr
           ? { loc: _ovrStr, prov: (parsed0 && parsed0.prov) || '', cap: '' }
           : (parsed0 || indirizzi[0] || '');
