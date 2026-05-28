@@ -1,11 +1,14 @@
-// ==UserScript==
-// @name         GCC — Gestione Concordati
-// @namespace    http://tampermonkey.net/
-// @version      10.0
-// @description  Gestione listino concordati con sync GitHub Gist
-// @match        *://*/*
-// @grant        none
-// ==/UserScript==
+// ============================================================
+//  GCC — Gestione Concordati CRT
+//  Versione 1.0
+//
+//  Strumento per la gestione del listino concordati di trasporto,
+//  calcolo costi CRT, confronto vettori e sincronizzazione Gist.
+//
+//  © 2026 Vittorio Zingoni — Tutti i diritti riservati.
+//  Uso personale e aziendale autorizzato. Vietata la distribuzione
+//  o riproduzione senza autorizzazione scritta dell'autore.
+// ============================================================
 
 (function () {
   'use strict';
@@ -33,7 +36,7 @@
   var LS_CRT_COLS    = 'tcp_crt_cols';
 
   // ═══════════════════════════════════════════════
-  //  FLOATING BUTTON
+  //  Pulsante
   // ═══════════════════════════════════════════════
 
   var btn = document.createElement('div');
@@ -51,7 +54,7 @@
   document.body.appendChild(btn);
 
   // ═══════════════════════════════════════════════
-  //  PANEL
+  //  Pannello funzioni
   // ═══════════════════════════════════════════════
 
   var panel = document.createElement('div');
@@ -610,7 +613,7 @@
   }
 
   // ═══════════════════════════════════════════════
-  //  CONFLICT RESOLVER POPUP
+  //  POPUP GESTIONE CONFLITTI SU CONCORDATI
   // ═══════════════════════════════════════════════
 
   function apriConflictResolver(conflitti, attuali, aggiunte, nFuse, nIgnorati, filenameMio, filenameCollega, isSync) {
