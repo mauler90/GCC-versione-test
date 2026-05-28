@@ -2168,7 +2168,14 @@
     var _locOverride = {};
     try {
       var _rawLO = localStorage.getItem('tcp_loc_override');
-      if (_rawLO) _locOverride = JSON.parse(_rawLO);
+      if (_rawLO) {
+        _locOverride = JSON.parse(_rawLO);
+        // Rimuovi chiavi 'undefined' salvate per errore
+        delete _locOverride['undefined'];
+        delete _locOverride['null'];
+        delete _locOverride[''];
+        localStorage.setItem('tcp_loc_override', JSON.stringify(_locOverride));
+      }
     } catch(e) {}
     // Leggi KM salvati manualmente (localStorage: tcp_km_tratte)
     var _kmTratte = {};
@@ -2221,7 +2228,7 @@
         // Singola località: cerca nel CRT usando dati parsati (loc+prov+cap)
         var parsed0 = (g.indirizziParsed && g.indirizziParsed[0]) || null;
         // Priorità: 1) override trovati (crtOverride), 2) override mancanti (_locOverride), 3) auto
-        var _ovrStr = (g.crtOverride || (_locOverride && _locOverride[g.chiave]) || '').trim();
+        var _ovrStr = (g.crtOverride || (_locOverride && (g.mKey ? _locOverride[g.mKey] : '')) || '').trim();
         var _searchInput = _ovrStr
           ? { loc: _ovrStr, prov: (parsed0 && parsed0.prov) || '', cap: '' }
           : (parsed0 || indirizzi[0] || '');
@@ -2354,7 +2361,7 @@
         '</td>'+
         '<td class="no-print" style="white-space:nowrap">'+
           '<button data-mgi="'+mgi+'" class="btn-loc-ovr" '+
-            'data-chiave="'+g.chiave+'" '+
+            'data-chiave="'+g.mKey+'" '+
             'title="Forza localita CRT" '+
             'style="padding:3px 7px;background:#16a085;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;margin-right:3px">&#x1F50D;<\/button>'+
           '<button data-mgi="'+mgi+'" class="btn-ins" '+
