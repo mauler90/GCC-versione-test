@@ -2164,6 +2164,12 @@
       var _rawAdd = localStorage.getItem(LS_ADDIZIONALI);
       if (_rawAdd) _addCRT = JSON.parse(_rawAdd);
     } catch(e) {}
+    // Carica override localita per mancanti (archivio separato dal listino)
+    var _locOverride = {};
+    try {
+      var _rawLO = localStorage.getItem('tcp_loc_override');
+      if (_rawLO) _locOverride = JSON.parse(_rawLO);
+    } catch(e) {}
     // Leggi KM salvati manualmente (localStorage: tcp_km_tratte)
     var _kmTratte = {};
     try {
@@ -2214,14 +2220,14 @@
       } else {
         // Singola località: cerca nel CRT usando dati parsati (loc+prov+cap)
         var parsed0 = (g.indirizziParsed && g.indirizziParsed[0]) || null;
-        // Se c'è un override, usa quello per la ricerca CRT
-        var _ovrStr = (g.crtOverride || '').trim();
+        // Priorità: 1) override trovati (crtOverride), 2) override mancanti (_locOverride), 3) auto
+        var _ovrStr = (g.crtOverride || _locOverride[g.chiave] || '').trim();
         var _searchInput = _ovrStr
           ? { loc: _ovrStr, prov: (parsed0 && parsed0.prov) || '', cap: '' }
           : (parsed0 || indirizzi[0] || '');
         var match = cercaCRT(_searchInput, porto, _crtRows);
         if (match) {
-          if (_ovrStr) match.label = match.label + ' \u2014 override: ' + _ovrStr;
+          if (_ovrStr) match.label = match.label + ' \u2014 loc.forzata: ' + _ovrStr;
           var calc = calcolaCRT(match.riga, g.containerType, _addCRT, 0, g.isADR, parseFloat(match.riga.km||0));
           if (calc) {
             g.crtMatch = match;
@@ -2347,6 +2353,10 @@
             'onclick="showVettoriByKey(this.dataset.vmgi,\'m\')">&#x1F69A;<\/button>'+
         '</td>'+
         '<td class="no-print" style="white-space:nowrap">'+
+          '<button data-mgi="'+mgi+'" class="btn-loc-ovr" '+
+            'data-chiave="'+g.chiave+'" '+
+            'title="Forza localita CRT" '+
+            'style="padding:3px 7px;background:#16a085;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;margin-right:3px">&#x1F50D;<\/button>'+
           '<button data-mgi="'+mgi+'" class="btn-ins" '+
             'style="padding:3px 7px;background:#e67e22;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px">'+
             '&#x270F;<\/button>'+
@@ -2473,6 +2483,7 @@
       'var _trovati='+JSON.stringify(trovati)+';'+
       'var _gruppi='+JSON.stringify(gruppiOrdine.map(function(k){ return gruppiMap[k]; }))+';'+
       'var _LS_LISTINO="'+LS_LISTINO+'";'+
+        'var _locOverrideMap='+JSON.stringify(_locOverride)+';'+
       'var _LS_FUEL_PERC="'+LS_FUEL_PERC+'";'+
       'var _LS_KM_TRATTE="tcp_km_tratte";'+
       'var _crtRowsPopup='+JSON.stringify(_crtRows)+';'+
@@ -2726,6 +2737,17 @@
 
       /* ── delegazione click globale ── */
       'document.addEventListener("click",function(e){'+
+        'if(e.target.classList.contains("btn-loc-ovr")){'+
+          'var _ch=e.target.dataset.chiave;'+
+          'var _cur=(_locOverrideMap&&_locOverrideMap[_ch])||"";'+
+          'var _nv=prompt("Forza localita CRT (vuoto = rimuovi):",_cur);'+
+          'if(_nv===null)return;'+
+          'var _lo={};try{var _r=localStorage.getItem("tcp_loc_override");if(_r)_lo=JSON.parse(_r);}catch(ex){}'+
+          '_nv=_nv.trim().toUpperCase();'+
+          'if(_nv){_lo[_ch]=_nv;}else{delete _lo[_ch];}'+
+          'try{localStorage.setItem("tcp_loc_override",JSON.stringify(_lo));}catch(ex){}'+
+          'alert("Localita forzata: "+(_nv||"rimossa")+". Ricalcola i concordati.");'+
+          'return;}'+
         'if(e.target.classList.contains("btn-ins")){apriModale(parseInt(e.target.dataset.mgi));}'+
         'if(e.target.classList.contains("btn-nav-scroll")){scrollToOrder(e.target.dataset.orderid,e.target.dataset.containernr);}'+
         'if(e.target.classList.contains("btn-modifica")){apriModaleModifica(e.target.dataset.chiave,parseInt(e.target.dataset.gi));}'+
