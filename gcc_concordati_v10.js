@@ -1,14 +1,11 @@
-// ============================================================
-//  GCC — Gestione Concordati CRT
-//  Versione 1.0
-//
-//  Strumento per la gestione del listino concordati di trasporto,
-//  calcolo costi CRT, confronto vettori e sincronizzazione Gist.
-//
-//  © 2026 Vittorio Zingoni — Tutti i diritti riservati.
-//  Uso personale e aziendale autorizzato. Vietata la distribuzione
-//  o riproduzione senza autorizzazione scritta dell'autore.
-// ============================================================
+// ==UserScript==
+// @name         GCC — Gestione Concordati
+// @namespace    http://tampermonkey.net/
+// @version      10.0
+// @description  Gestione listino concordati con sync GitHub Gist
+// @match        *://*/*
+// @grant        none
+// ==/UserScript==
 
 (function () {
   'use strict';
@@ -17,7 +14,7 @@
   var LS_FUEL_PERC = 'tcp_fuel_perc';
   var LS_TOKEN     = 'tcp_gcc_token';
   var GIST_ID      = '93f3fe07c908d94f152c56ad805202f5';
-  var GIST_FILE    = 'tcp_listino.json';
+  var GIST_FILE    = 'A-tcp_listino-v2.json';
   var GIST_FILE_BASE = 'tcp_listino_base.json';
   var GIST_FILE_VETTORI_REG = 'tcp_vettori_registry.json';
   var LS_VETTORI_REG        = 'tcp_gcc_vettori';
@@ -36,7 +33,7 @@
   var LS_CRT_COLS    = 'tcp_crt_cols';
 
   // ═══════════════════════════════════════════════
-  //  Pulsante
+  //  FLOATING BUTTON
   // ═══════════════════════════════════════════════
 
   var btn = document.createElement('div');
@@ -54,7 +51,7 @@
   document.body.appendChild(btn);
 
   // ═══════════════════════════════════════════════
-  //  Pannello funzioni
+  //  PANEL
   // ═══════════════════════════════════════════════
 
   var panel = document.createElement('div');
@@ -542,10 +539,14 @@
       var remoteRaw = (gistData.files[GIST_FILE] && gistData.files[GIST_FILE].content) || '{"rows":[]}';
       var remoteRows;
       try { remoteRows = JSON.parse(remoteRaw).rows || []; } catch(e) { remoteRows = []; }
+      // Filtra righe placeholder (riga di esempio con luogo_1 = stringa letterale)
+      remoteRows = remoteRows.filter(function(r){ return r.luogo_1 !== 'Luogo 1'; });
 
       var localRaw = localStorage.getItem(LS_LISTINO);
       var localRows = [];
       try{if(localRaw)localRows=JSON.parse(localRaw).rows||[];}catch(e){localStorage.removeItem(LS_LISTINO);}
+      // Filtra placeholder anche dal locale
+      localRows = localRows.filter(function(r){ return r.luogo_1 !== 'Luogo 1'; });
 
       var mappaLocali = {};
       localRows.forEach(function(r, i) { mappaLocali[chiaveTratta(r)] = i; });
@@ -613,7 +614,7 @@
   }
 
   // ═══════════════════════════════════════════════
-  //  POPUP GESTIONE CONFLITTI SU CONCORDATI
+  //  CONFLICT RESOLVER POPUP
   // ═══════════════════════════════════════════════
 
   function apriConflictResolver(conflitti, attuali, aggiunte, nFuse, nIgnorati, filenameMio, filenameCollega, isSync) {
@@ -1570,7 +1571,7 @@
       'function initDLs(){populateDL("dl-comm",_sugg.committenti);populateDL("dl-luoghi",_sugg.luoghi);populateDL("dl-deliv",_sugg.delivery_places);populateDL("dl-porti",_sugg.porti);}'+
       'function addSugg(key,dlId,val){val=(val||"").trim();if(!val)return;if(_sugg[key].indexOf(val)===-1){_sugg[key].push(val);populateDL(dlId,_sugg[key]);}}'+
 
-      'function pushGistGL(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
+      'function pushGistGL(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"A-tcp_listino-v2.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       'function renderTable(){'+
         'var filter=(document.getElementById("search").value||"").toLowerCase();'+
         'var html="";var count=0;'+
@@ -2592,7 +2593,7 @@
   'pw.document.write("<html><head><title>Listino Concordati</title><style>@page{size:A4 landscape;margin:8mm}body{font-family:Arial,sans-serif;padding:10px;font-size:10px}table{width:100%;border-collapse:collapse;font-size:9px}th{padding:4px 6px;text-align:left;background:#1a5276;color:#fff;font-size:9px}td{padding:3px 6px;border-bottom:1px solid #eee;font-size:9px}.no-print,.btn-ins,.btn-vettori{display:none!important}.section{margin-bottom:20px;padding-bottom:8px}.section-title{font-weight:bold;font-size:11px;margin:0 0 6px;padding:4px 8px;border-radius:3px}.section-title.ok{background:#d5f5e3;color:#1a5276}.section-title.warn{background:#fdebd0;color:#784212}.badge-container{display:inline-block}</style></head><body>"+hdr+parts.join("") +"</body></html>");'+
   'pw.document.close();pw.focus();setTimeout(function(){pw.print();},400);'+
 '}'+
-'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"tcp_listino.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
+'function pushGist(rows){var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},body:JSON.stringify({files:{"A-tcp_listino-v2.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       /* ── data input auto-format DD/MM/YY ── */
       'function initDataInput(el){'+
         'el.value=_dataOggi;'+
