@@ -1,11 +1,14 @@
-// ==UserScript==
-// @name         GCC — Gestione Concordati
-// @namespace    http://tampermonkey.net/
-// @version      10.0
-// @description  Gestione listino concordati con sync GitHub Gist
-// @match        *://*/*
-// @grant        none
-// ==/UserScript==
+// ============================================================
+//  GCC — Gestione Concordati CRT
+//  Versione 1.0
+//
+//  Strumento per la gestione del listino concordati di trasporto,
+//  calcolo costi CRT, confronto vettori e sincronizzazione Gist.
+//
+//  © 2026 Vittorio Zingoni — Tutti i diritti riservati.
+//  Uso personale e aziendale autorizzato. Vietata la distribuzione
+//  o riproduzione senza autorizzazione scritta dell'autore.
+// ============================================================
 
 (function () {
   'use strict';
@@ -450,7 +453,9 @@
   //  MERGE / SYNC
   // ═══════════════════════════════════════════════
 
-  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','fuel_perc','note','km_percorrenza','fuel_perc_custom','fuel_data_custom','crt_override','data_validita'];
+  var CAMPI_COSTO = ['costo_20','costo_40','costo_hc','congestion','extra_stop','s_notte','allaccio_rf','adr','fuel','note','km_percorrenza','crt_override','data_validita'];
+  // Campi fuel: il valore remoto vince sempre senza generare conflitti
+  var CAMPI_FUEL_AUTO = ['fuel_perc','fuel_perc_custom','fuel_data_custom'];
 
   function chiaveTratta(r) {
     return [norm(r.luogo_1),norm(r.luogo_2),norm(r.delivery_place),
@@ -466,6 +471,11 @@
       if (!ve && vn) { complementare = true; }
       else if (ve && vn && ve !== vn) { conflitti.push({ campo:f, mia:ve, sua:vn }); }
     });
+    // Campi fuel: il remoto vince sempre, nessun conflitto generato
+    CAMPI_FUEL_AUTO.forEach(function(f){
+      var vn = (nuova[f]||'').toString().trim();
+      if (vn) { complementare = true; } // forza fusione per applicare il valore remoto
+    });
     if (conflitti.length > 0) return { tipo:'conflitto', campiConflitto:conflitti };
     if (complementare) {
       var fusa = JSON.parse(JSON.stringify(esistente));
@@ -473,6 +483,10 @@
         if (!(fusa[f]||'').toString().trim() && (nuova[f]||'').toString().trim()) {
           fusa[f] = nuova[f];
         }
+      });
+      // Campi fuel: il remoto sovrascrive sempre il locale
+      CAMPI_FUEL_AUTO.forEach(function(f){
+        if ((nuova[f]||'').toString().trim()) { fusa[f] = nuova[f]; }
       });
       return { tipo:'complementare', rigaFusa:fusa };
     }
@@ -1419,6 +1433,7 @@
       + 'var _TK="' + LS_TOKEN + '";'
       + 'var _keys=' + allKeys + ';'
       + 'var _LFH="tcp_fuel_history";'
+      + 'var _LS_LIST="' + LS_LISTINO + '";'
       + 'function _renderHist(){'
       +   'var el=document.getElementById("fuel-hist");if(!el)return;'
       +   'var raw=localStorage.getItem(_LFH);var list=[];'
@@ -1434,7 +1449,7 @@
       +   'var dv=document.getElementById("fuel-delta");'
       +   'var delta=dv?parseFloat(dv.value):NaN;'
       +   'if(isNaN(delta)||delta===0){alert("Inserisci un delta valido (es. +1 o -0.5).");return;}'
-      +   'var raw=localStorage.getItem("tcp_listino");'
+      +   'var raw=localStorage.getItem(_LS_LIST);'
       +   'if(!raw){alert("Calcola prima i concordati.");return;}'
       +   'try{'
       +     'var ls=JSON.parse(raw);var cnt=0;'
@@ -1442,7 +1457,7 @@
       +       'var cur=parseFloat(r.fuel_perc_custom||0);'
       +       'if(cur>0){var nv=Math.round((cur+delta)*10)/10;if(nv<0)nv=0;r.fuel_perc_custom=String(nv);cnt++;}'
       +     '});'
-      +     'localStorage.setItem("tcp_listino",JSON.stringify(ls));'
+      +     'localStorage.setItem(_LS_LIST,JSON.stringify(ls));'
       +     'var hist=[];try{var hr=localStorage.getItem(_LFH);if(hr)hist=JSON.parse(hr);}catch(ex){}'
       +     'var now=new Date();'
       +     'var ds=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");'
@@ -1464,10 +1479,10 @@
       + 'document.getElementById("btn-apply-fuel").addEventListener("click",_applyFuel);'
       + '(function(){'
       +   'var _t0=localStorage.getItem(_TK);'
-      +   'if(!_t0||localStorage.getItem(_LFH)){_renderHist();return;}'
+      +   'if(!_t0){_renderHist();return;}'
       +   'fetch("https://api.github.com/gists/"+_GID,{headers:{"Authorization":"token "+_t0,"Accept":"application/vnd.github.v3+json"}})'
       +   '.then(function(r){return r.ok?r.json():null;})'
-      +   '.then(function(gd){if(!gd)return;var f=gd.files["tcp_fuel_history.json"];if(!f){_renderHist();return;}'
+      +   '.then(function(gd){if(!gd){_renderHist();return;}var f=gd.files["tcp_fuel_history.json"];if(!f){_renderHist();return;}'
       +     'var p=f.truncated?fetch(f.raw_url).then(function(r){return r.json();}):Promise.resolve(JSON.parse(f.content));'
       +     'p.then(function(d){if(d&&d.history){try{localStorage.setItem(_LFH,JSON.stringify(d.history));}catch(ex){}}_renderHist();}).catch(function(){_renderHist();});'
       +   '}).catch(function(){_renderHist();});'
