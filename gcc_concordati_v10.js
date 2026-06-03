@@ -6,8 +6,7 @@
 //  calcolo costi CRT, confronto vettori e sincronizzazione Gist.
 //
 //  © 2026 Vittorio Zingoni — Tutti i diritti riservati.
-//  Uso personale e aziendale autorizzato. Vietata la distribuzione
-//  o riproduzione senza autorizzazione scritta dell'autore.
+//  Vietata la distribuzione o riproduzione senza autorizzazione scritta dell'autore.
 // ============================================================
 
 (function () {
@@ -36,7 +35,7 @@
   var LS_CRT_COLS    = 'tcp_crt_cols';
 
   // ═══════════════════════════════════════════════
-  //  FLOATING BUTTON
+  //  Pulsante
   // ═══════════════════════════════════════════════
 
   var btn = document.createElement('div');
@@ -54,7 +53,7 @@
   document.body.appendChild(btn);
 
   // ═══════════════════════════════════════════════
-  //  PANEL
+  //  MENU PULSANTE
   // ═══════════════════════════════════════════════
 
   var panel = document.createElement('div');
@@ -85,6 +84,7 @@
   panel.appendChild(makeBtn('&#x2601; Sync Listino',        '#2980b9', function(){ sincronizza(); }));
   panel.appendChild(makeBtn('&#x1F4CB; Elenco Concordati',  '#16a085', function(){ apriGestioneListino(); }));
   panel.appendChild(makeBtn('&#x1F50D; Calcola Concordati', '#27ae60', function(){ eseguiMatch(); }));
+  panel.appendChild(makeBtn('&#x1F69A; Concordati LDV',     '#1a6e3c', function(){ eseguiMatchLDV(); }));
   panel.appendChild(makeBtn('&#x1F4CA; Tariffario C.R.T',   '#8e44ad', function(){ apriTariffarioCRT(); }));
   panel.appendChild(makeBtn('&#x1F69A; Gestisci Vettori',   '#d35400', function(){ apriGestioneVettori(); }));
   panel.appendChild(makeBtn('&#x2695; Addizionali',         '#c0392b', function(){ apriAddizionali(); }));
@@ -933,6 +933,129 @@
   }
 
   // ═══════════════════════════════════════════════
+  //  LEGGI ORDINI DA PAGINA LDV (lettera di vettura)
+  //  Struttura: riga singola, tutto in una tr
+  //  [1]=orderId [3]=lef [4]=traffic [5]=committente
+  //  [8]=delivery_place [9]=indirizzi [12]=containerNr
+  //  [13]=POL [14]=POD [16]=tipoContainer
+  // ═══════════════════════════════════════════════
+
+  function leggiOrdiniLDV(){
+    var ordini=[];
+    document.querySelectorAll('tr.ui-widget-content.ui-datatable-selectable').forEach(function(riga){
+      var tds=riga.querySelectorAll('td'); if(tds.length<17) return;
+
+      var orderId        = tds[1]  ? tds[1].innerText.trim()  : '';
+      var lef            = tds[3]  ? tds[3].innerText.trim()  : '';
+      var traffic        = tds[4]  ? tds[4].innerText.trim()  : '';
+      var committente    = parseNome(tds[7] ? tds[7].innerText.trim() : '');  // tds[7]=requestor branch (es. Savino Del Bene Firenze)
+      var delivery_place = parseNome(tds[8] ? tds[8].innerText.trim() : '');
+      var _rawAddr       = tds[9]  ? tds[9].innerText.trim()  : '';
+      var containerNr    = tds[12] ? tds[12].innerText.trim() : '';
+      var polRaw         = tds[13] ? tds[13].innerText.trim() : '';
+      var podRaw         = tds[14] ? tds[14].innerText.trim() : '';
+      var ctrRaw         = tds[16] ? tds[16].innerText.trim() : '';
+
+      if(!orderId) return;
+
+      // Indirizzi: stessa logica di leggiOrdini
+      var indirizzi = parseIndirizzi(_rawAddr);
+      var indirizziParsed = _rawAddr.split('\n')
+        .reduce(function(acc, line){
+          var t = line.trim();
+          if(!t) return acc;
+          if(/^\d{5}$/.test(t) && acc.length>0 && !acc[acc.length-1].cap){
+            acc[acc.length-1].cap = t;
+          } else {
+            acc.push(parseIndirizzoCompleto(t));
+          }
+          return acc;
+        }, []);
+
+      // Porto: estrai codice ITXXX da [ITXXX] nel POL o POD
+      // Export → POL italiano ([13]), Import → POD italiano ([14])
+      function estraiCodicePorto(raw){
+        var m = raw.match(/\[([A-Z]{2}[A-Z0-9]{3})\]/);
+        return m ? m[1] : '';
+      }
+      var polCodice = estraiCodicePorto(polRaw);
+      var podCodice = estraiCodicePorto(podRaw);
+      var trafficNorm = norm(traffic);
+      var porto = trafficNorm === 'export' ? polCodice : podCodice;
+
+      // ADR: icona nella riga
+      var isADR = !!riga.querySelector('.sdb-icon-cabinet_warning');
+
+      // Un solo container per riga in questa pagina
+      var containers = [{
+        containerNr:      containerNr,
+        containerTypeRaw: ctrRaw,
+        containerType:    parseContainerType(ctrRaw),
+        portLoading:      polCodice,
+        portDischarge:    podCodice,
+        porto:            porto,
+        deliveryDT:       ''
+      }];
+
+      ordini.push({ orderId:orderId, lef:lef, committente:committente, traffic:traffic,
+        delivery_place:delivery_place, indirizzi:indirizzi, indirizziParsed:indirizziParsed,
+        isADR:isADR, containers:containers });
+    });
+    return ordini;
+  }
+
+  // ═══════════════════════════════════════════════
+  //  ESEGUI MATCH LDV
+  // ═══════════════════════════════════════════════
+
+  function eseguiMatchLDV(){
+    if(_gcc_crt_loading){
+      _gcc_crt_callbacks.push(function(){ eseguiMatchLDV(); });
+      return;
+    }
+    if(_gcc_crt_rows.length===0 && localStorage.getItem(LS_TOKEN)){
+      var loadMsg=document.createElement('div');
+      loadMsg.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);'
+        +'background:#1a5276;color:white;padding:12px 24px;border-radius:8px;'
+        +'font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+      loadMsg.textContent='\u23F3 Caricamento tariffe CRT dal Gist...';
+      document.body.appendChild(loadMsg);
+      var tok=localStorage.getItem(LS_TOKEN);
+      _gcc_crt_loading=true;
+      fetch('https://api.github.com/gists/'+GIST_ID,{
+        headers:{'Authorization':'token '+tok,'Accept':'application/vnd.github.v3+json'}
+      })
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(gd){
+        if(!gd) return Promise.all([Promise.resolve([]),Promise.resolve([])]);
+        return Promise.all([
+          _fetchGistFile(gd.files[GIST_FILE_CRT_LIV],tok),
+          _fetchGistFile(gd.files[GIST_FILE_CRT_SPE],tok)
+        ]);
+      })
+      .then(function(results){
+        _gcc_crt_rows=(results[0]||[]).concat(results[1]||[]);
+        _gcc_crt_loading=false;
+        loadMsg.remove();
+        try{aggiornaStato();}catch(e){}
+        eseguiMatchLDV();
+      })
+      .catch(function(){
+        _gcc_crt_loading=false;
+        loadMsg.remove();
+        _eseguiMatchCore(leggiOrdiniLDV());
+      });
+      return;
+    }
+    var token=localStorage.getItem(LS_TOKEN);
+    if(token){
+      sincronizza(function(){ _eseguiMatchCore(leggiOrdiniLDV()); });
+    } else {
+      _eseguiMatchCore(leggiOrdiniLDV());
+    }
+  }
+
+  // ═══════════════════════════════════════════════
   //  ESEGUI MATCH
   // ═══════════════════════════════════════════════
 
@@ -986,13 +1109,13 @@
     }
   }
 
-  function _eseguiMatchCore(){
+  function _eseguiMatchCore(ordiniOverride){
     var raw=localStorage.getItem(LS_LISTINO);
     if(!raw){ alert('Nessun listino caricato. Fai un Sync.'); return; }
     var listino=[];
     try{listino=JSON.parse(raw).rows||[];}catch(e){alert('Dati corrotti, fai un Sync.');return;}
-    var ordini=leggiOrdini();
-    if(ordini.length===0){ alert('Nessun ordine trovato. Assicurati che ci siano righe espanse.'); return; }
+    var ordini=ordiniOverride||leggiOrdini();
+    if(ordini.length===0){ alert('Nessun ordine trovato. Assicurati che ci siano righe visibili nella pagina.'); return; }
     var risultati=[];
     ordini.forEach(function(ordine){
       ordine.containers.forEach(function(container){
