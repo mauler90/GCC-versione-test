@@ -28,10 +28,14 @@
   var GIST_FILE_CRT_SPE = 'tcp_crt_laspezia.json';
   var GIST_FILE_ADD  = 'tcp_gcc_addizionali.json';
   var GIST_FILE_FUEL_HIST = 'tcp_fuel_history.json';
-  var LS_LISTINO_BASE = 'tcp_listino_base';
-  var LS_VETTORI      = 'tcp_vettori';
-  var LS_ADDIZIONALI  = 'tcp_gcc_addizionali';
-  var LS_CRT_COLS    = 'tcp_crt_cols';
+  var GIST_FILE_GN      = 'tcp_listino_gn.json';
+  var GIST_FILE_ADD_GN  = 'tcp_addizionali_gn.json';
+  var LS_LISTINO_GN     = 'tcp_listino_gn';
+  var LS_ADD_GN         = 'tcp_addizionali_gn';
+  var LS_LISTINO_BASE   = 'tcp_listino_base';
+  var LS_VETTORI        = 'tcp_vettori';
+  var LS_ADDIZIONALI    = 'tcp_gcc_addizionali';
+  var LS_CRT_COLS       = 'tcp_crt_cols';
 
   // ═══════════════════════════════════════════════
   //  FLOATING BUTTON
@@ -85,6 +89,7 @@
   panel.appendChild(makeBtn('&#x1F50D; Calcola Concordati', '#27ae60', function(){ eseguiMatch(); }));
   panel.appendChild(makeBtn('&#x1F69A; Concordati LDV',     '#1a6e3c', function(){ eseguiMatchLDV(); }));
   panel.appendChild(makeBtn('&#x1F4CA; Tariffario C.R.T',   '#8e44ad', function(){ apriTariffarioCRT(); }));
+  panel.appendChild(makeBtn('&#x1F4CB; Tariffario G.N.',     '#922b21', function(){ apriTariffarioGN(); }));
   panel.appendChild(makeBtn('&#x1F69A; Gestisci Vettori',   '#d35400', function(){ apriGestioneVettori(); }));
   panel.appendChild(makeBtn('&#x2695; Addizionali',         '#c0392b', function(){ apriAddizionali(); }));
   panel.appendChild(makeBtn('&#x2699; Configura Sync',      '#7f8c8d', function(){ apriConfigSync(); }));
@@ -94,6 +99,52 @@
   var _gcc_crt_rows = [];   // unica fonte runtime, niente localStorage
   var _gcc_crt_loading = false;  // true durante il fetch Gist
   var _gcc_crt_callbacks = [];   // funzioni da eseguire quando CRT è pronto
+
+  // ── General Noli in-memory cache ─────────────────────────
+  var _gcc_gn_rows    = [];   // tariffe GN, niente localStorage (file troppo grande)
+  var _gcc_gn_add     = { ITGOA:{}, ITSPE:{}, ITLIV:{} };
+  var _gcc_gn_loading = false;
+  var _gcc_gn_callbacks = [];
+
+  function _loadGnData(callback) {
+    if (_gcc_gn_rows.length) { if(callback) callback(); return; }
+    if (_gcc_gn_loading) { if(callback) _gcc_gn_callbacks.push(callback); return; }
+    var tok = localStorage.getItem(LS_TOKEN);
+    if (!tok) { if(callback) callback(); return; }
+    _gcc_gn_loading = true;
+    fetch('https://api.github.com/gists/' + GIST_ID, {
+      headers: { 'Authorization': 'token ' + tok, 'Accept': 'application/vnd.github.v3+json' }
+    })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(gd){
+      if (!gd) return;
+      var tok2 = localStorage.getItem(LS_TOKEN);
+      var fGN  = gd.files[GIST_FILE_GN];
+      var fAdd = gd.files[GIST_FILE_ADD_GN];
+      return Promise.all([
+        fGN  ? _fetchGistFile(fGN,  tok2) : Promise.resolve([]),
+        fAdd ? fetch(fAdd.raw_url).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}) : Promise.resolve(null)
+      ]);
+    })
+    .then(function(results){
+      if (!results) return;
+      _gcc_gn_rows = results[0] || [];
+      if (results[1] && results[1].addizionali) _gcc_gn_add = results[1].addizionali;
+      // Salva solo gli addizionali (piccoli) in localStorage
+      try { localStorage.setItem(LS_ADD_GN, JSON.stringify({addizionali:_gcc_gn_add})); } catch(e){}
+      _gcc_gn_loading = false;
+      console.log('[GCC] GN caricato dal Gist: ' + _gcc_gn_rows.length + ' righe');
+      var cbs = _gcc_gn_callbacks.splice(0);
+      cbs.forEach(function(cb){ try{cb();}catch(e){}});
+      if (callback) callback();
+    })
+    .catch(function(){
+      _gcc_gn_loading = false;
+      var cbs = _gcc_gn_callbacks.splice(0);
+      cbs.forEach(function(cb){ try{cb();}catch(e){}});
+      if (callback) callback();
+    });
+  }
 
   function _initCrtData() {
     var tok = localStorage.getItem(LS_TOKEN);
@@ -1117,6 +1168,13 @@
     try{listino=JSON.parse(raw).rows||[];}catch(e){alert('Dati corrotti, fai un Sync.');return;}
     var ordini=ordiniOverride||leggiOrdini();
     if(ordini.length===0){ alert('Nessun ordine trovato. Assicurati che ci siano righe visibili nella pagina.'); return; }
+
+    // ── Pre-carica GN se ci sono ordini General Noli e cache vuota ──
+    var hasGN = ordini.some(function(o){ return _isGN(o.committente); });
+    if (hasGN && !_gcc_gn_rows.length && !_gcc_gn_loading) {
+      _loadGnData(function(){ _eseguiMatchCore(ordini); });
+      return;
+    }
     var risultati=[];
     ordini.forEach(function(ordine){
       ordine.containers.forEach(function(container){
@@ -1403,6 +1461,124 @@
     var popup = window.open('', 'tcp_crt', 'width=1200,height=720,scrollbars=yes,resizable=yes');
     popup.location.replace(_crtUrl);
     setTimeout(function(){ URL.revokeObjectURL(_crtUrl); }, 8000);
+  }
+
+  // ═══════════════════════════════════════════════
+  //  TARIFFARIO GENERAL NOLI
+  // ═══════════════════════════════════════════════
+  function apriTariffarioGN() {
+    panel.style.display = 'none';
+    var tok = localStorage.getItem(LS_TOKEN);
+
+    // CSS condiviso col resto delle finestre
+    var cssGN =
+      '*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}'+
+      'body{background:#f5f5f5;font-size:13px}'+
+      '#topbar{background:#7b241c;color:white;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100}'+
+      '#topbar h2{font-size:16px;white-space:nowrap}'+
+      '#topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'+
+      '.tbtn{padding:6px 12px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;color:white}'+
+      '#tabs{display:flex;gap:4px}'+
+      '.tab-btn{padding:5px 14px;border:none;border-radius:4px;cursor:pointer;background:rgba(255,255,255,.2);color:white;font-size:12px;font-weight:bold}'+
+      '.tab-btn.active{background:white;color:#7b241c}'+
+      'input#search{padding:6px 10px;border-radius:5px;border:none;font-size:12px;width:180px}'+
+      '#table-wrap{padding:12px;overflow-x:auto}'+
+      'table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}'+
+      'th{background:#7b241c;color:white;padding:8px 6px;font-size:11px;text-align:center}'+
+      'td{padding:5px 6px;border-bottom:1px solid #f0f0f0;font-size:12px;text-align:center}'+
+      'tr:hover td{background:#fdf2f0}'+
+      'td:nth-child(4){text-align:left;font-weight:bold}'+
+      '#nrows{font-size:11px;color:#888;margin-top:6px;padding-left:4px}'+
+      '#save-badge{font-size:10px;color:rgba(255,255,255,.7);margin-left:4px}'+
+      // Sezione addizionali
+      '#add-section{background:white;margin:0 12px 12px;border-radius:8px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}'+
+      '#add-section h3{font-size:13px;color:#7b241c;margin-bottom:10px;border-bottom:2px solid #f0e0de;padding-bottom:6px}'+
+      '.add-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}'+
+      '.add-field{display:flex;flex-direction:column;gap:3px;font-size:11px;color:#555;font-weight:bold}'+
+      '.add-field input{padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px}'+
+      '#btn-salva-add{margin-top:12px;padding:8px 20px;background:#7b241c;color:white;border:none;border-radius:5px;cursor:pointer;font-weight:bold;font-size:13px}';
+
+    // Addizionali correnti per porto
+    var addGN = { ITGOA:{}, ITSPE:{}, ITLIV:{} };
+    try {
+      var rawAddGN = localStorage.getItem(LS_ADD_GN);
+      if (rawAddGN) addGN = JSON.parse(rawAddGN).addizionali || addGN;
+    } catch(e) {}
+
+    var ADD_FIELDS = [
+      { k:'presa_extra',  l:'Presa Extra (€)' },
+      { k:'adr',          l:'ADR (€)' },
+      { k:'sosta',        l:'Sosta (€)' },
+      { k:'sosta_notte',  l:'Sosta Notte (€)' },
+      { k:'vgm',          l:'VGM (€)' },
+      { k:'congestion',   l:'Congestion (€)' },
+    ];
+
+    function addGrid(porto) {
+      var obj = addGN[porto] || {};
+      return ADD_FIELDS.map(function(f) {
+        return '<div class="add-field"><label>'+f.l+'</label>'+
+          '<input type="number" min="0" class="add-inp" data-porto="'+porto+'" data-key="'+f.k+'" value="'+(obj[f.k]||0)+'"></div>';
+      }).join('');
+    }
+
+    var scriptGN = "var _TK=\"tcp_gcc_token\";var _GID=\"93f3fe07c908d94f152c56ad805202f5\";var _GF_GN=\"tcp_listino_gn.json\";var _GF_ADD_GN=\"tcp_addizionali_gn.json\";var _LS_GN=\"tcp_listino_gn\";var _LS_ADD_GN=\"tcp_addizionali_gn\";var _rows=[];var _fp=\"ITGOA\";function _fetchFile(fo,tok){if(!fo)return Promise.resolve(null);if(!fo.truncated){try{return Promise.resolve(JSON.parse(fo.content));}catch(e){return Promise.resolve(null);}}return fetch(fo.raw_url).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}function renderGN(){var filter=(document.getElementById(\"search-gn\").value||\"\").toLowerCase();var html=\"\";var count=0;_rows.forEach(function(r){if((r.porto||\"\")!==_fp)return;var s=[r.cap,r.prov,r.localita,String(r.km||0)].join(\" \").toLowerCase();if(filter&&!s.includes(filter))return;count++;html+=\"<tr>\";html+=\"<td style=\\\"color:#aaa;font-size:10px\\\">\"+count+\"</td>\";html+=\"<td>\"+(r.cap||\"\")+\"</td>\";html+=\"<td>\"+(r.prov||\"\").toUpperCase()+\"</td>\";html+=\"<td style=\\\"font-weight:bold\\\">\"+(r.localita||\"\")+\"</td>\";html+=\"<td>\"+(r.km||\"\")+\"</td>\";html+=\"<td>\\u20ac\"+(r.costo_20||\"-\")+\"</td>\";html+=\"<td>\\u20ac\"+(r.costo_40||\"-\")+\"</td>\";html+=\"<td>\\u20ac\"+(r.costo_20rf||\"-\")+\"</td>\";html+=\"<td>\\u20ac\"+(r.costo_40rf||\"-\")+\"</td>\";html+=\"</tr>\";});document.getElementById(\"tbody-gn\").innerHTML=html;var tot=_rows.filter(function(r){return(r.porto||\"\")===_fp;}).length;var goa=_rows.filter(function(r){return r.porto===\"ITGOA\";}).length;var liv=_rows.filter(function(r){return r.porto===\"ITLIV\";}).length;var spe=_rows.filter(function(r){return r.porto===\"ITSPE\";}).length;document.getElementById(\"nrows-gn\").textContent=\"Visualizzate: \"+count+\" / \"+tot+\" \\u2014 Genova: \"+goa+\" | Livorno: \"+liv+\" | La Spezia: \"+spe;}function syncDaGistGN(){var tok=localStorage.getItem(_TK);if(!tok){alert(\"Token non configurato.\");return;}var badge=document.getElementById(\"save-badge-gn\");if(badge)badge.textContent=\"\\u23f3 Sync...\";fetch(\"https://api.github.com/gists/\"+_GID,{headers:{\"Authorization\":\"token \"+tok,\"Accept\":\"application/vnd.github.v3+json\"}}).then(function(r){if(!r.ok)throw new Error(\"HTTP \"+r.status);return r.json();}).then(function(gd){var tok2=localStorage.getItem(_TK);return Promise.all([_fetchFile(gd.files[_GF_GN],tok2),_fetchFile(gd.files[_GF_ADD_GN],tok2)]);}).then(function(res){var tariffe=res[0];var add=res[1];if(tariffe&&tariffe.rows){_rows=tariffe.rows;try{localStorage.setItem(_LS_GN,JSON.stringify(tariffe));}catch(e){}renderGN();}if(add&&add.addizionali){try{localStorage.setItem(_LS_ADD_GN,JSON.stringify(add));}catch(e){}document.querySelectorAll(\".add-inp\").forEach(function(inp){var porto=inp.dataset.porto;var key=inp.dataset.key;inp.value=(add.addizionali[porto]||{})[key]||0;});}var cnt=_rows.length;if(badge)badge.textContent=cnt+\" tariffe \\u2713\";alert(\"Sync OK: \"+cnt+\" tariffe GN caricate.\");}).catch(function(e){if(badge)badge.textContent=\"\\u26a0 Errore\";alert(\"Errore sync: \"+e.message);});}function salvaAddGN(){var add={ITGOA:{},ITSPE:{},ITLIV:{}};document.querySelectorAll(\".add-inp\").forEach(function(inp){var porto=inp.dataset.porto;var key=inp.dataset.key;add[porto][key]=parseFloat(inp.value)||0;});var obj={addizionali:add};try{localStorage.setItem(_LS_ADD_GN,JSON.stringify(obj));}catch(e){}var tok=localStorage.getItem(_TK);if(!tok){alert(\"Addizionali salvati in locale.\");return;}fetch(\"https://api.github.com/gists/\"+_GID,{method:\"PATCH\",headers:{\"Authorization\":\"token \"+tok,\"Content-Type\":\"application/json\"},body:JSON.stringify({files:{[_GF_ADD_GN]:{content:JSON.stringify(obj,null,2)}}})}).then(function(r){if(!r.ok)throw new Error(\"HTTP \"+r.status);return r.json();}).then(function(){alert(\"\\u2705 Addizionali G.N. salvati sul Gist.\");}).catch(function(e){alert(\"\\u26a0 Salvataggio Gist fallito: \"+e.message);});}var _inputXlsGN=document.createElement(\"input\");_inputXlsGN.type=\"file\";_inputXlsGN.accept=\".xlsx,.xls\";_inputXlsGN.style.display=\"none\";document.body.appendChild(_inputXlsGN);_inputXlsGN.addEventListener(\"change\",function(){var f=_inputXlsGN.files[0];if(!f)return;var fname=f.name;var reader=new FileReader();reader.onload=function(ev){try{var wb=XLSX.read(new Uint8Array(ev.target.result),{type:\"array\"});var nuove=[];var PM={\"GENOVA PORTO\":\"ITGOA\",\"LA SPEZIA PORTO\":\"ITSPE\",\"LIVORNO PORTO\":\"ITLIV\"};wb.SheetNames.forEach(function(sn){var rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:\"\",raw:true,header:0});if(!rr.length)return;rr.forEach(function(row){var pl=String(row.porto||row.Porto||\"\").trim();var pc=PM[pl];if(!pc)return;var p20=parseInt(row[\"20 box\"]||row.p20DR||0)||0;var p40=parseInt(row[\"40 box\"]||row.p40DR||0)||0;if(p20===0&&p40===0)return;var cr=row.cap||row.Cap||row.CAP||\"\";var cap=String(parseInt(cr)||cr).padStart(5,\"0\");nuove.push({porto:pc,localita:String(row.citta||row.Destinazione||\"\").trim(),prov:String(row.pv||row.Prov||\"\").trim(),cap:cap,km:parseInt(row.km||row.Km||row.KM||0)||0,costo_20:p20,costo_40:p40,adr:parseInt(row.adr||row.ADR||0)||0,costo_20rf:parseInt(row[\"20 reefer\"]||row.p20RF||0)||0,costo_40rf:parseInt(row[\"40 reefer\"]||row.p40RF||0)||0});});});if(!nuove.length){alert(\"Nessuna tariffa trovata.\\nVerifica colonne: porto, citta, pv, cap, km, 20 box, 40 box\");return;}var goa=nuove.filter(function(r){return r.porto===\"ITGOA\";}).length;var liv=nuove.filter(function(r){return r.porto===\"ITLIV\";}).length;var spe=nuove.filter(function(r){return r.porto===\"ITSPE\";}).length;var rie=\"Genova: \"+goa+\"\\nLivorno: \"+liv+\"\\nLa Spezia: \"+spe;if(!confirm(\"Trovate \"+nuove.length+\" tariffe da \\\"\"+fname+\"\\\":\\n\\n\"+rie+\"\\n\\nConfermi?\"))return;_rows=nuove;renderGN();var obj={rows:nuove,filename:fname,updated_at:new Date().toISOString()};try{localStorage.setItem(_LS_GN,JSON.stringify(obj));}catch(e){}var tok=localStorage.getItem(_TK);var badge=document.getElementById(\"save-badge-gn\");if(badge)badge.textContent=\"\\u23f3 Salvataggio...\";if(tok){fetch(\"https://api.github.com/gists/\"+_GID,{method:\"PATCH\",headers:{\"Authorization\":\"token \"+tok,\"Content-Type\":\"application/json\"},body:JSON.stringify({files:{[_GF_GN]:{content:JSON.stringify(obj,null,2)}}})}).then(function(r){if(!r.ok)throw new Error(\"HTTP \"+r.status);return r.json();}).then(function(){if(badge)badge.textContent=nuove.length+\" tariffe \\u2713 Gist\";alert(\"\\u2705 Importate \"+nuove.length+\" tariffe G.N.\\n\\n\"+rie+\"\\n\\nSalvato sul Gist.\");}).catch(function(e){if(badge)badge.textContent=\"\\u26a0 Gist fallito\";alert(\"Tariffe importate ma Gist fallito:\\n\"+e.message);});}else{alert(\"Tariffe importate in locale.\\nToken non configurato.\");}     }catch(e){alert(\"Errore lettura file: \"+e.message);}};reader.readAsArrayBuffer(f);});document.getElementById(\"btn-sync-gn\").addEventListener(\"click\",function(){syncDaGistGN();});document.getElementById(\"btn-salva-add\").addEventListener(\"click\",function(){salvaAddGN();});document.getElementById(\"btn-carica-excel-gn\").addEventListener(\"click\",function(){_inputXlsGN.value=\"\";_inputXlsGN.click();});document.getElementById(\"search-gn\").addEventListener(\"input\",renderGN);document.querySelectorAll(\".tab-btn\").forEach(function(b){b.addEventListener(\"click\",function(){document.querySelectorAll(\".tab-btn\").forEach(function(x){x.classList.remove(\"active\");});b.classList.add(\"active\");_fp=b.dataset.porto;renderGN();var lbl={\"ITGOA\":\"Genova\",\"ITSPE\":\"La Spezia\",\"ITLIV\":\"Livorno\"};var el=document.getElementById(\"add-porto-label\");if(el)el.textContent=lbl[_fp]||_fp;document.querySelectorAll(\".add-porto-section\").forEach(function(s){s.style.display=\"none\";});var sec=document.getElementById(\"add-sec-\"+_fp);if(sec)sec.style.display=\"\";});});(function(){var raw=localStorage.getItem(_LS_GN);if(raw){try{var obj=JSON.parse(raw);_rows=obj.rows||[];}catch(e){}}renderGN();if(!_rows.length){var autoTok=localStorage.getItem(_TK);if(autoTok){var tb=document.getElementById(\"tbody-gn\");if(tb)tb.innerHTML=\"<tr><td colspan=\\\"10\\\" style=\\\"text-align:center;padding:20px;color:#888\\\">\\u23f3 Caricamento dal Gist...</td></tr>\";syncDaGistGN();}}})();";
+    // HTML finestra GN
+    var _gnHtml = [
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tariffario General Noli</title>',
+      '<style>'+cssGN+'</style></head><body>',
+      '<div id="topbar">',
+        '<h2>&#x1F4CB; Tariffario G.N. &mdash; General Noli</h2>',
+        '<div id="topbar-right">',
+          '<div id="tabs">',
+            '<button class="tab-btn active" data-porto="ITGOA">Genova</button>',
+            '<button class="tab-btn" data-porto="ITSPE">La Spezia</button>',
+            '<button class="tab-btn" data-porto="ITLIV">Livorno</button>',
+          '</div>',
+          '<input id="search-gn" placeholder="\uD83D\uDD0D Filtra CAP / Citt\u00e0..."/>',
+          '<button class="tbtn" id="btn-sync-gn" style="background:#2980b9">\u2193 Da Gist</button>',
+          '<button class="tbtn" id="btn-carica-excel-gn" style="background:#e67e22">Carica Excel</button>',
+          '<span id="save-badge-gn"></span>',
+        '</div>',
+      '</div>',
+      // Sezione addizionali per porto — in alto per accesso rapido
+      '<div id="add-section">',
+        '<h3>&#x2795; Addizionali per porto &mdash; <span id="add-porto-label">Genova</span></h3>',
+        '<div class="add-porto-section" id="add-sec-ITGOA">',
+          '<div class="add-grid">'+addGrid('ITGOA')+'</div>',
+        '</div>',
+        '<div class="add-porto-section" id="add-sec-ITSPE" style="display:none">',
+          '<div class="add-grid">'+addGrid('ITSPE')+'</div>',
+        '</div>',
+        '<div class="add-porto-section" id="add-sec-ITLIV" style="display:none">',
+          '<div class="add-grid">'+addGrid('ITLIV')+'</div>',
+        '</div>',
+        '<button id="btn-salva-add">&#x1F4BE; Salva Addizionali sul Gist</button>',
+      '</div>',
+      '<div id="table-wrap">',
+        '<table>',
+          '<thead><tr>',
+            '<th>#</th><th>CAP</th><th>Prov</th><th>Citt\u00e0</th><th>KM</th>',
+            '<th>20\'</th><th>40\'</th><th>20\' RF</th><th>40\' RF</th>',
+          '</tr></thead>',
+          '<tbody id="tbody-gn"></tbody>',
+        '</table>',
+        '<div id="nrows-gn"></div>',
+      '</div>',
+      '<script>'+scriptGN+'<\/script>',
+      '<script>(function(){',
+        'var s=document.createElement("script");',
+        's.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";',
+        'document.head.appendChild(s);',
+      '})();<\/script>',
+      '</body></html>'
+    ].join('');
+
+    var _gnBlob = new Blob([_gnHtml], {type: 'text/html;charset=utf-8'});
+    var _gnUrl  = URL.createObjectURL(_gnBlob);
+    var popup = window.open('', 'tcp_gn', 'width=1300,height=800,scrollbars=yes,resizable=yes');
+    popup.location.replace(_gnUrl);
+    setTimeout(function(){ URL.revokeObjectURL(_gnUrl); }, 8000);
   }
 
   function apriGestioneVettori() {
@@ -2208,6 +2384,24 @@
       + '</span>';
   }
 
+  // Helper: il committente è General Noli?
+  function _isGN(committente) {
+    return norm(committente).indexOf('general noli') >= 0;
+  }
+
+  // Formatta riga tariffa General Noli — badge bordeaux ben visibile
+  function _fmtGNHtml(calc) {
+    if (!calc) return '';
+    var r1 = '\u20ac' + calc.costoBase;
+    var r2 = calc.addExtra.map(function(x){ return '+ \u20ac'+x.amt+' '+x.label; }).join(' ');
+    return '<br><span style="display:inline-block;margin-top:3px;font-size:11px;color:#7b241c;font-weight:bold">'+
+      '<span style="background:#922b21;color:white;border-radius:3px;padding:1px 5px;font-size:10px;margin-right:4px">G.N.</span>'+
+      r1 +
+      (r2 ? ' <span style="color:#7f8c8d;font-weight:normal">'+r2+'</span>' : '') +
+      (calc.matchInfo ? ' <span style="color:#a93226;font-size:10px;font-style:italic;font-weight:normal"> \u2014 '+calc.matchInfo+'</span>' : '') +
+      '</span>';
+  }
+
   function _trovaECalcolaVettore(g, kmBase) {
     if (!g.vettoreRaw || !_gcc_vettori_reg.length) return;
     var _vNorm  = norm(g.vettoreRaw);
@@ -2364,6 +2558,37 @@
       var _rawAdd = localStorage.getItem(LS_ADDIZIONALI);
       if (_rawAdd) _addCRT = JSON.parse(_rawAdd);
     } catch(e) {}
+
+    // ── Leggi listino GN e addizionali GN (da cache in-memory) ──
+    var _gnRows = _gcc_gn_rows;
+    var _addGN  = _gcc_gn_add;
+
+    // Helper: cerca nel listino GN e calcola costo
+    function _cercaECalcolaGN(parsed, porto, ct, isADR) {
+      if (!_gnRows.length) return null;
+      var portoCod = (porto || '').toUpperCase();
+      var match = cercaCRT(parsed, portoCod, _gnRows);
+      if (!match) return null;
+      var riga = match.riga;
+      var add  = _addGN[portoCod] || {};
+      // Scegli costo base
+      var costoBase = parseFloat(
+        ct.isReefer ? (ct.size === '20' ? (riga.costo_20rf || 0) : (riga.costo_40rf || 0))
+        : ct.size === '20' ? (riga.costo_20 || 0)
+        : (riga.costo_40 || 0)
+      );
+      if (!costoBase) return null;
+      costoBase = Math.round(costoBase);
+      var addExtra = [];
+      if (parseFloat(add.presa_extra || 0) > 0) addExtra.push({ label: 'Presa Extra', amt: Math.round(add.presa_extra) });
+      if (parseFloat(add.congestion  || 0) > 0) addExtra.push({ label: 'Congestion',  amt: Math.round(add.congestion)  });
+      if (parseFloat(add.sosta_notte || 0) > 0 && parseFloat(riga.km || 0) >= 750)
+        addExtra.push({ label: 'Sosta Notte', amt: Math.round(add.sosta_notte) });
+      if (isADR && parseFloat(add.adr || 0) > 0) addExtra.push({ label: 'ADR', amt: Math.round(add.adr) });
+      return { costoBase: costoBase, fuelAmt: 0, fuelPerc: 0, subtotale: costoBase,
+               addExtra: addExtra, matchInfo: match.label };
+    }
+
     // Carica override localita per mancanti (archivio separato dal listino)
     var _locOverride = {};
     try {
@@ -2484,6 +2709,12 @@
 
       // ── Calcola tariffa vettore stradale (solo LDV) ──
       _trovaECalcolaVettore(g, g.crtMatch && g.crtMatch.riga ? parseFloat(g.crtMatch.riga.km||0) : 0);
+
+      // ── Calcola tariffa General Noli se committente è GN ──
+      if (_isGN(g.committente)) {
+        var _parsed0gnm = (g.indirizziParsed && g.indirizziParsed[0]) || null;
+        g.gnCalc = _cercaECalcolaGN(_parsed0gnm, g.porto, g.containerType, g.isADR||false);
+      }
     });
 
     var thCols =
@@ -2505,12 +2736,19 @@
       // ── Calcola tariffa vettore stradale per trovati (solo LDV) ──
       if (!g.vettoreCalc) _trovaECalcolaVettore(g, g.kmManuale||0);
 
+      // ── Calcola tariffa General Noli se committente è GN ──
+      if (_isGN(g.committente)) {
+        var _parsed0gnt = (g.indirizziParsed && g.indirizziParsed[0]) || null;
+        g.gnCalc = _cercaECalcolaGN(_parsed0gnt, g.porto, g.containerType, g.isADR||false);
+      }
+
       var costoHtml =
         '<span style="font-weight:bold;color:#27ae60">\u20ac'+g.costoB+'</span>'+
         ((g.hasFuel||g.fuelPercCustom>0)?' <span class="fuel-cell" data-base="'+g.costoB+'"'+(g.fuelPercCustom>0?' data-fuel-custom="'+g.fuelPercCustom+'"':'')+' style="color:#e67e22;font-size:11px"></span>':'')+
         (g.extras.length?' <span style="color:#7f8c8d;font-size:11px"> '+g.extras.join(' ')+'</span>':'')+
         (g.vettoreCalc ? _fmtVettoreHtml(g.vettoreNome, g.vettoreCalc, g.vettoreCalc.matchInfo)
-          : g.vettoreNome ? '<br><span style="font-size:10px;color:#95a5a6">&#x1F69A; '+g.vettoreNome+' &mdash; <i>nessun tariffario</i></span>' : '');
+          : g.vettoreNome ? '<br><span style="font-size:10px;color:#95a5a6">&#x1F69A; '+g.vettoreNome+' &mdash; <i>nessun tariffario</i></span>' : '')+
+        (g.gnCalc ? _fmtGNHtml(g.gnCalc) : '');
 
       // Encode containers list for the badge
       var ctrsJson = JSON.stringify(g.containers).replace(/"/g,'&quot;');
@@ -2587,6 +2825,7 @@
       } else if (g.vettoreNome) {
         costoCrtHtml += '<br><span style="font-size:10px;color:#95a5a6">&#x1F69A; '+g.vettoreNome+' &mdash; <i>nessun tariffario</i></span>';
       }
+      if (g.gnCalc) costoCrtHtml += _fmtGNHtml(g.gnCalc);
 
       htmlMancanti+=
         '<tr id="mrow_'+mgi+'">'+
