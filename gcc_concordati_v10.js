@@ -35,7 +35,7 @@
   var LS_CRT_COLS    = 'tcp_crt_cols';
 
   // ═══════════════════════════════════════════════
-  //  Pulsante
+  //  FLOATING BUTTON
   // ═══════════════════════════════════════════════
 
   var btn = document.createElement('div');
@@ -53,7 +53,7 @@
   document.body.appendChild(btn);
 
   // ═══════════════════════════════════════════════
-  //  MENU PULSANTE
+  //  PANEL
   // ═══════════════════════════════════════════════
 
   var panel = document.createElement('div');
@@ -948,6 +948,7 @@
       var orderId        = tds[1]  ? tds[1].innerText.trim()  : '';
       var lef            = tds[3]  ? tds[3].innerText.trim()  : '';
       var traffic        = tds[4]  ? tds[4].innerText.trim()  : '';
+      var vettoreRaw     = parseNome(tds[5] ? tds[5].innerText.trim() : '');  // tds[5]=vettore stradale (es. MEDLOG ITALIA SRL)
       var committente    = parseNome(tds[7] ? tds[7].innerText.trim() : '');  // tds[7]=requestor branch (es. Savino Del Bene Firenze)
       var delivery_place = parseNome(tds[8] ? tds[8].innerText.trim() : '');
       var _rawAddr       = tds[9]  ? tds[9].innerText.trim()  : '';
@@ -998,6 +999,7 @@
       }];
 
       ordini.push({ orderId:orderId, lef:lef, committente:committente, traffic:traffic,
+        vettoreRaw:vettoreRaw,
         delivery_place:delivery_place, indirizzi:indirizzi, indirizziParsed:indirizziParsed,
         isADR:isADR, containers:containers });
     });
@@ -1124,6 +1126,7 @@
           delivery_place:ordine.delivery_place, committente:ordine.committente,
           traffic:ordine.traffic, indirizzi:ordine.indirizzi,
           indirizziParsed:ordine.indirizziParsed, isADR:ordine.isADR||false,
+          vettoreRaw:ordine.vettoreRaw||'',
           containerNr:container.containerNr, containerTypeRaw:container.containerTypeRaw,
           containerType:container.containerType, portLoading:container.portLoading,
           portDischarge:container.portDischarge, porto:container.porto, deliveryDT:container.deliveryDT,
@@ -2188,6 +2191,60 @@
   }
 
   // ═══════════════════════════════════════════════
+  //  HELPER: trova vettore per nome+porto e calcola tariffa
+  //  Usato dalla LDV per mostrare la tariffa del vettore stradale.
+  //  Filtra prima per porto (v.porti contiene il porto del container)
+  //  poi fa match fuzzy per nome → evita di confondere Double V LIV e Double V SPE.
+  // ═══════════════════════════════════════════════
+  // Formatta la riga vettore come la riga CRT:
+  // 🚛 Nome: €base + €fuel fuel (X%) = €subtot  + €HC HC + €Cong Congestion  — matchInfo
+  function _fmtVettoreHtml(nome, vc, matchInfo) {
+    var r1 = '\u20ac' + vc.costoBase;
+    if (vc.fuelAmt > 0) r1 += ' + \u20ac' + vc.fuelAmt + ' fuel (' + vc.fuelPerc + '%) = \u20ac' + vc.subtotale;
+    var r2 = vc.addExtra.map(function(x){ return '+ \u20ac' + x.amt + ' ' + x.label; }).join(' ');
+    return '<br><span style="font-size:10px;color:#117a8b">&#x1F69A; ' + nome + ': '
+      + '<b>' + r1 + '</b>'
+      + (r2 ? ' <span style="color:#7f8c8d">' + r2 + '</span>' : '')
+      + (matchInfo ? ' &mdash; <i>' + matchInfo + '</i>' : '')
+      + '</span>';
+  }
+
+  function _trovaECalcolaVettore(g, kmBase) {
+    if (!g.vettoreRaw || !_gcc_vettori_reg.length) return;
+    var _vNorm  = norm(g.vettoreRaw);
+    var _porto  = (g.porto || '').toUpperCase();
+
+    // 1) Filtra per porto: considera solo vettori che operano su questo porto
+    var _candidati = _gcc_vettori_reg.filter(function(v) {
+      return v.porti && v.porti.map(function(p){ return p.toUpperCase(); }).indexOf(_porto) >= 0;
+    });
+    // Fallback: se nessun candidato per questo porto, usa tutti (non bloccare)
+    if (!_candidati.length) _candidati = _gcc_vettori_reg;
+
+    // 2) Match fuzzy per nome tra i candidati filtrati per porto
+    var _vMatch = null; var _vBest = 0;
+    _candidati.forEach(function(v) {
+      var _vn = norm(v.nome); var score = 0;
+      if (_vNorm === _vn) score = 3;
+      else if (_vNorm.indexOf(_vn) >= 0 || _vn.indexOf(_vNorm) >= 0) score = 2;
+      else { _vn.split(/\s+/).forEach(function(p){ if(p.length>2 && _vNorm.indexOf(p)>=0) score++; }); }
+      if (score > _vBest) { _vBest = score; _vMatch = v; }
+    });
+    if (!_vMatch || _vBest === 0) {
+      // Nessun vettore nel registry corrisponde: mostra comunque il nome grezzo dalla pagina
+      if (g.vettoreRaw) g.vettoreNome = g.vettoreRaw;
+      return;
+    }
+    // Vettore trovato nel registry: salva il nome anche se la tariffa non sarà disponibile
+    g.vettoreNome = _vMatch.nome;
+
+    // 3) Calcola tariffa
+    var _parsed0 = (g.indirizziParsed && g.indirizziParsed[0]) || null;
+    var _vCalc = _calcolaVettore(_vMatch, _parsed0, g.porto, g.containerType, kmBase, g.isADR, kmBase, g.containerType.isReefer||false);
+    if (_vCalc) { g.vettoreCalc = _vCalc; g.vettoreNome = _vMatch.nome; }
+  }
+
+  // ═══════════════════════════════════════════════
   //  POPUP RISULTATI
   // ═══════════════════════════════════════════════
 
@@ -2254,6 +2311,7 @@
           kmManuale: parseFloat(m.km_percorrenza || 0),
           crtOverride: (m.crt_override || '').trim().toUpperCase(),
           containerType:ct,
+          vettoreRaw: r.vettoreRaw||'',
           containers:[]
         };
         gruppiOrdine.push(gKey);
@@ -2289,6 +2347,7 @@
           mappa[mKey] = { mKey:mKey, equip:equipLabel(ct), containerType:ct,
             indirizzi:r.indirizzi, indirizziParsed:r.indirizziParsed, isADR:r.isADR||false, delivery_place:r.delivery_place,
             committente:r.committente, traffic:r.traffic, porto:r.porto,
+            vettoreRaw: r.vettoreRaw||'',
             containers:[] };
           mGruppiM.push(mappa[mKey]);
         }
@@ -2386,6 +2445,9 @@
       }
       g.isDoppia = isDoppia;
       g.kmKey    = kmKey;
+
+      // ── Calcola tariffa vettore stradale (solo LDV) ──
+      _trovaECalcolaVettore(g, g.crtMatch && g.crtMatch.riga ? parseFloat(g.crtMatch.riga.km||0) : 0);
     });
 
     var thCols =
@@ -2404,10 +2466,15 @@
       var g = gruppiMap[gKey];
       var n = g.containers.length;
 
+      // ── Calcola tariffa vettore stradale per trovati (solo LDV) ──
+      if (!g.vettoreCalc) _trovaECalcolaVettore(g, g.kmManuale||0);
+
       var costoHtml =
         '<span style="font-weight:bold;color:#27ae60">\u20ac'+g.costoB+'</span>'+
         ((g.hasFuel||g.fuelPercCustom>0)?' <span class="fuel-cell" data-base="'+g.costoB+'"'+(g.fuelPercCustom>0?' data-fuel-custom="'+g.fuelPercCustom+'"':'')+' style="color:#e67e22;font-size:11px"></span>':'')+
-        (g.extras.length?' <span style="color:#7f8c8d;font-size:11px"> '+g.extras.join(' ')+'</span>':'');
+        (g.extras.length?' <span style="color:#7f8c8d;font-size:11px"> '+g.extras.join(' ')+'</span>':'')+
+        (g.vettoreCalc ? _fmtVettoreHtml(g.vettoreNome, g.vettoreCalc, g.vettoreCalc.matchInfo)
+          : g.vettoreNome ? '<br><span style="font-size:10px;color:#95a5a6">&#x1F69A; '+g.vettoreNome+' &mdash; <i>nessun tariffario</i></span>' : '');
 
       // Encode containers list for the badge
       var ctrsJson = JSON.stringify(g.containers).replace(/"/g,'&quot;');
@@ -2478,6 +2545,13 @@
         costoCrtHtml = '<span style="color:#c0392b;font-style:italic;font-size:11px">-- no match CRT --</span>';
       }
 
+      // ── Aggiungi riga tariffa vettore se disponibile ──
+      if (g.vettoreCalc) {
+        costoCrtHtml += _fmtVettoreHtml(g.vettoreNome, g.vettoreCalc, g.vettoreCalc.matchInfo);
+      } else if (g.vettoreNome) {
+        costoCrtHtml += '<br><span style="font-size:10px;color:#95a5a6">&#x1F69A; '+g.vettoreNome+' &mdash; <i>nessun tariffario</i></span>';
+      }
+
       htmlMancanti+=
         '<tr id="mrow_'+mgi+'">'+
         '<td><span style="display:inline-block;background:#c0392b;color:white;'+
@@ -2518,6 +2592,10 @@
       '#topbar{display:flex;align-items:center;justify-content:space-between;background:#1a5276;color:white;padding:10px 18px;position:sticky;top:0;z-index:100;gap:10px}'+
       '#topbar h2{margin:0;font-size:16px;white-space:nowrap}'+
       '#topbar-right{display:flex;align-items:center;gap:10px}'+
+      '#dm-box{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);padding:6px 12px;border-radius:7px;font-size:13px}'+
+      '#dm-box label{margin:0;font-weight:bold;white-space:nowrap}'+
+      '#dm-toggle{cursor:pointer;background:#555;border:none;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:bold}'+
+      '#dm-toggle.on{background:#8e44ad}'+
       '#search-res{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:220px;background:rgba(255,255,255,.15);color:white;}'+
       '#search-res::placeholder{color:rgba(255,255,255,.65)}'+
       '#search-res:focus{outline:none;background:white;color:#333}'+
@@ -2806,6 +2884,25 @@
 
       /* ── stampa ── */
       'document.getElementById("btn-stampa").addEventListener("click",function(){stampaConcordati();});'+
+
+      /* ── toggle Divisione Macchine ── */
+      'var _dmHidden=false;'+
+      'var _DM_KEY="c.r.t. divisione macchine";'+
+      'function _isDM(g){ return (g.vettoreRaw||"").toLowerCase().indexOf("divisione macchine")>=0; }'+
+      'function _applyDmFilter(){'+
+        'document.querySelectorAll("#tbody-trovati tr,#tbody-mancanti tr").forEach(function(tr){'+
+          'var idx=parseInt(tr.id.replace(/[^0-9]/g,""));'+
+          'var g=tr.id.indexOf("trow_")>=0?(_gruppi[idx]||null):(_mGruppiM[idx]||null);'+
+          'if(!g)return;'+
+          'tr.style.display=(_dmHidden&&_isDM(g))?"none":"";'+
+        '});'+
+      '}'+
+      'document.getElementById("dm-toggle").addEventListener("click",function(){'+
+        '_dmHidden=!_dmHidden;'+
+        'this.textContent=_dmHidden?"Nascosta":"Visibile";'+
+        'this.classList.toggle("on",_dmHidden);'+
+        '_applyDmFilter();'+
+      '});'+
 
       /* ── fuel toggle modale ── */
       'document.getElementById("m-fuel-toggle").addEventListener("click",function(){'+
@@ -3241,6 +3338,10 @@
               '<input type="number" id="fuel-perc" min="0" max="100" step="0.1" placeholder="%">'+
               '<span style="font-size:12px;color:white">%<\/span>'+
             '<\/div>'+
+          '<\/div>'+
+          '<div id="dm-box">'+
+            '<label>&#x1F3E2; Div. Macchine:<\/label>'+
+            '<button id="dm-toggle">Visibile<\/button>'+
           '<\/div>'+
           '<select id="print-sel" style="padding:5px 9px;border:1px solid #bbb;border-radius:5px;font-size:12px;cursor:pointer">'+'<option value="all">Stampa tutto</option>'+'<option value="trovati">Solo concordati</option>'+'<option value="mancanti">Solo mancanti</option>'+'</select> '+'<button id="btn-stampa">&#x1F5A8; Stampa<\/button>'+
         '<\/div>'+
