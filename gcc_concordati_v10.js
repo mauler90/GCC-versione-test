@@ -2,9 +2,8 @@
 //  GCC — Gestione Concordati CRT
 //  Versione 1.0
 //
-//  Strumento per la gestione del listino concordati di trasporto,
-//  calcolo costi CRT, confronto vettori e sincronizzazione Gist.
-//
+//  Strumento per la gestione del listino concordati di trasporto
+//  
 //  © 2026 Vittorio Zingoni — Tutti i diritti riservati.
 //  Vietata la distribuzione o riproduzione senza autorizzazione scritta dell'autore.
 // ============================================================
@@ -2399,7 +2398,43 @@
       var kmKey = [norm(indirizzi[0]||''), norm(indirizzi[1]||''), norm(porto)].join('|||');
 
       if (isDoppia) {
-        // Doppia località: cerca prima KM salvati manualmente
+        // ── Controllo: una delle due località è il porto stesso? ──
+        // Es: LA SPEZIA → BOMPORTO con porto ITSPE → la prima è il porto, calcola solo sulla seconda
+        var _portoKeywords = {
+          'ITSPE': ['la spezia','laspezia','spezia'],
+          'ITLIV': ['livorno','livor']
+        };
+        var _kwList = _portoKeywords[porto] || [];
+        var _addr0n = norm(indirizzi[0] || '');
+        var _addr1n = norm(indirizzi[1] || '');
+        var _addr0isPorto = _kwList.some(function(k){ return _addr0n.indexOf(k) >= 0; });
+        var _addr1isPorto = _kwList.some(function(k){ return _addr1n.indexOf(k) >= 0; });
+        // Solo se esattamente una delle due è il porto, l'altra è la vera località
+        var _localitaAlt = null;
+        var _parsedAlt   = null;
+        if (_addr0isPorto && !_addr1isPorto) {
+          _localitaAlt = indirizzi[1];
+          _parsedAlt   = (g.indirizziParsed && g.indirizziParsed[1]) || null;
+        } else if (_addr1isPorto && !_addr0isPorto) {
+          _localitaAlt = indirizzi[0];
+          _parsedAlt   = (g.indirizziParsed && g.indirizziParsed[0]) || null;
+        }
+
+        if (_localitaAlt && _parsedAlt) {
+          // Tratta singola effettiva: cerca direttamente per località
+          var _matchAlt = cercaCRT(_parsedAlt, porto, _crtRows);
+          if (_matchAlt) {
+            var _calcAlt = calcolaCRT(_matchAlt.riga, g.containerType, _addCRT, 0, g.isADR, parseFloat(_matchAlt.riga.km||0));
+            if (_calcAlt) {
+              g.crtMatch = { riga: _matchAlt.riga, metodo: 'auto', label: _matchAlt.label + ' \u2014 presa in porto ignorata' };
+              g.crtCalc  = _calcAlt;
+              isDoppia   = false;  // trattata come singola, no km manuali
+            }
+          }
+        }
+
+        if (isDoppia) {
+        // Doppia località vera: cerca prima KM salvati manualmente
         if (_kmTratte[kmKey]) {
           var kmSalvati = parseFloat(_kmTratte[kmKey]);
           // Cerca nel CRT la riga con KM più vicini
@@ -2425,6 +2460,7 @@
           g.crtNeedKm = true;
           g.crtKmKey  = kmKey;
         }
+        } // end isDoppia vera
       } else {
         // Singola località: cerca nel CRT usando dati parsati (loc+prov+cap)
         var parsed0 = (g.indirizziParsed && g.indirizziParsed[0]) || null;
@@ -3300,7 +3336,34 @@
         'if(e.target.classList.contains("btn-km")){apriModaleKm(parseInt(e.target.dataset.mgi));return;}'+
         'if(e.target.id==="km-btn-annulla"||e.target.id==="km-overlay"){chiudiModaleKm();return;}'+
         'if(e.target.id==="km-btn-salva"){salvaKm();return;}'+
+        'if(e.target.id==="km-btn-reset"){resetKm();return;}'+
       '});'+
+
+      'function resetKm(){'+
+        'if(_kmMgi===null)return;'+
+        'var g=_mGruppiM[_kmMgi];'+
+        // Rimuovi KM dal localStorage
+        'var kmTratte={};'+
+        'try{var r=localStorage.getItem(_LS_KM_TRATTE);if(r)kmTratte=JSON.parse(r);}catch(e){}'+
+        'delete kmTratte[g.kmKey];'+
+        'try{localStorage.setItem(_LS_KM_TRATTE,JSON.stringify(kmTratte));}catch(e){}'+
+        // Ripristina pulsante "Inserisci KM" nella cella
+        'var td=document.getElementById("mcosto_"+_kmMgi);'+
+        'if(td)td.innerHTML='+
+          '"<span style=\\"color:#e67e22;font-size:11px\\">&#x1F69A; Doppia loc. &mdash; </span>"+'+
+          '"<button class=\\"btn-km\\" data-mgi=\\""+_kmMgi+"\\" "+'+
+          '"style=\\"padding:2px 8px;border:none;background:#e67e22;color:white;border-radius:3px;cursor:pointer;font-size:11px\\">"+'+
+          '"Inserisci KM</button>";'+
+        // Azzera gruppo
+        '_mGruppiM[_kmMgi].kmManuale=0;'+
+        '_mGruppiM[_kmMgi].crtMatch=null;'+
+        '_mGruppiM[_kmMgi].crtCalc=null;'+
+        'if(window.opener&&window.opener._gccMancantiGroups&&_kmMgi<window.opener._gccMancantiGroups.length){'+
+          'window.opener._gccMancantiGroups[_kmMgi].kmManuale=0;'+
+          'window.opener._gccMancantiGroups[_kmMgi].crtMatch=null;'+
+        '}'+
+        'chiudiModaleKm();'+
+      '}'
 
       /* ── export excel mancanti ── */
       'function esportaExcel(){'+
@@ -3423,6 +3486,7 @@
           '<div id="km-hint">Inserisci i KM andata e ritorno del giro completo.<br>Il costo verr\u00e0 calcolato dalla riga CRT con KM pi\u00f9 vicini.<\/div>'+
           '<div id="km-btns">'+
             '<button id="km-btn-annulla">Annulla<\/button>'+
+            '<button id="km-btn-reset" style="background:#c0392b;color:white">&#x2716; Reset<\/button>'+
             '<button id="km-btn-salva">&#x1F4BE; Calcola e salva<\/button>'+
           '<\/div>'+
         '<\/div>'+
