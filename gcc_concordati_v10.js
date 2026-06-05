@@ -182,6 +182,15 @@
   var _gcc_vettori_tariffe = {};
   var _gcc_vettori_loading = false;
 
+  var _gcc_vettori_callbacks = [];  // callbacks da eseguire quando vettori sono pronti
+
+  function _ensureVettori(callback) {
+    if (_gcc_vettori_reg.length) { if (callback) callback(); return; }
+    if (_gcc_vettori_loading) { if (callback) _gcc_vettori_callbacks.push(callback); return; }
+    if (callback) _gcc_vettori_callbacks.push(callback);
+    _initVettoriData();
+  }
+
   function _initVettoriData() {
     var tok = localStorage.getItem(LS_TOKEN); if (!tok) return;
     _gcc_vettori_loading = true;
@@ -263,6 +272,8 @@
           _gcc_vettori_loading = false;
           console.log('[GCC] Vettori: ' + _gcc_vettori_reg.length);
           try { aggiornaStato(); } catch(e) {}
+          var _vcbs = _gcc_vettori_callbacks.splice(0);
+          _vcbs.forEach(function(cb){ try{cb();}catch(e){} });
           // Carica km_vecchio: se LZString non ancora disponibile, loadalo poi decomprime
           if (typeof LZString === 'undefined') {
             var _lzs = document.createElement('script');
@@ -1177,6 +1188,12 @@
     var hasGN = ordini.some(function(o){ return _isGN(o.committente); });
     if (hasGN && !_gcc_gn_rows.length && !_gcc_gn_loading) {
       _loadGnData(function(){ _eseguiMatchCore(ordini); });
+      return;
+    }
+
+    // ── Assicura che i vettori siano in memoria ──
+    if (!_gcc_vettori_reg.length) {
+      _ensureVettori(function(){ _eseguiMatchCore(ordini); });
       return;
     }
     var risultati=[];
@@ -2743,7 +2760,16 @@
       var n = g.containers.length;
 
       // ── Calcola tariffa vettore stradale per trovati (solo LDV) ──
-      if (!g.vettoreCalc) _trovaECalcolaVettore(g, g.kmManuale||0);
+      if (!g.vettoreCalc) {
+        // Per vettori a km: cerca i km dalla riga CRT corrispondente all'indirizzo
+        var _kmPerVettore = g.kmManuale || 0;
+        if (!_kmPerVettore && g.indirizziParsed && g.indirizziParsed[0] && _crtRows.length) {
+          var _crtMatchT = cercaCRT(g.indirizziParsed[0], g.porto, _crtRows);
+          if (_crtMatchT && _crtMatchT.riga && _crtMatchT.riga.km)
+            _kmPerVettore = parseFloat(_crtMatchT.riga.km) || 0;
+        }
+        _trovaECalcolaVettore(g, _kmPerVettore);
+      }
 
       // ── Calcola tariffa General Noli se committente è GN ──
       if (_isGN(g.committente)) {
