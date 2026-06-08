@@ -322,7 +322,6 @@
       if (v.tipo === 'km_vecchio' && parsed && _gcc_km_vecchio_rows.length) {
         try {
           var _kvMatch = cercaCRT(parsed, porto, _gcc_km_vecchio_rows);
-          // Fallback loc-only: prov/CAP del vecchio distanziere potrebbero non coincidere
           if (!_kvMatch && parsed.loc) {
             _kvMatch = cercaCRT({ loc: parsed.loc, prov: '', cap: '' }, porto, _gcc_km_vecchio_rows);
           }
@@ -2302,8 +2301,6 @@
             return (r.prov||'').toUpperCase() === det.prov;
           });
           if (locProv.length > 0) {
-            // Se CAP disponibile, preferisce la riga con CAP corrispondente
-            // (evita che fuzzy match restituisca la voce sbagliata, es. S.VITTORIA invece di GUALTIERI)
             if (capQ && locProv.length > 1) {
               var locProvCap = locProv.filter(function(r){ return (r.cap||'').replace(/\s/g,'') === capQ; });
               if (locProvCap.length > 0) return ret(locProvCap[0], 'loc+prov+cap');
@@ -2478,6 +2475,15 @@
 
     // 3) Calcola tariffa
     var _parsed0 = (g.indirizziParsed && g.indirizziParsed[0]) || null;
+    // Se c'è già un match CRT (incluso override manuale "Forza Località"), usa quella locality
+    // per cercare nel vecchio distanziere: è più precisa del fuzzy parsing dell'indirizzo grezzo
+    if (g.crtMatch && g.crtMatch.riga && g.crtMatch.riga.localita) {
+      _parsed0 = {
+        loc: (g.crtMatch.riga.localita || '').toUpperCase(),
+        prov: (g.crtMatch.riga.prov  || '').toUpperCase(),
+        cap:  (g.crtMatch.riga.cap   || '')
+      };
+    }
     var _vCalc = _calcolaVettore(_vMatch, _parsed0, g.porto, g.containerType, kmBase, g.isADR, kmBase, g.containerType.isReefer||false);
     if (_vCalc) { g.vettoreCalc = _vCalc; g.vettoreNome = _vMatch.nome; }
   }
