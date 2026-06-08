@@ -1,6 +1,6 @@
 // ============================================================
 //  GCC — Gestione Concordati CRT
-//  Versione 1.0
+//  Versione 1.1
 //
 //  Strumento per la gestione del listino concordati di trasporto
 //  
@@ -322,6 +322,10 @@
       if (v.tipo === 'km_vecchio' && parsed && _gcc_km_vecchio_rows.length) {
         try {
           var _kvMatch = cercaCRT(parsed, porto, _gcc_km_vecchio_rows);
+          // Fallback loc-only: prov/CAP del vecchio distanziere potrebbero non coincidere
+          if (!_kvMatch && parsed.loc) {
+            _kvMatch = cercaCRT({ loc: parsed.loc, prov: '', cap: '' }, porto, _gcc_km_vecchio_rows);
+          }
           if (_kvMatch && _kvMatch.riga && _kvMatch.riga.km) {
             effectiveKmBase = parseFloat(_kvMatch.riga.km);
             matchInfo = (_kvMatch.riga.localita || '') + (_kvMatch.riga.prov ? ' (' + _kvMatch.riga.prov + ')' : '')
@@ -2297,7 +2301,15 @@
           var locProv = byLoc.filter(function(r) {
             return (r.prov||'').toUpperCase() === det.prov;
           });
-          if (locProv.length > 0) return ret(locProv[0], 'loc+prov');
+          if (locProv.length > 0) {
+            // Se CAP disponibile, preferisce la riga con CAP corrispondente
+            // (evita che fuzzy match restituisca la voce sbagliata, es. S.VITTORIA invece di GUALTIERI)
+            if (capQ && locProv.length > 1) {
+              var locProvCap = locProv.filter(function(r){ return (r.cap||'').replace(/\s/g,'') === capQ; });
+              if (locProvCap.length > 0) return ret(locProvCap[0], 'loc+prov+cap');
+            }
+            return ret(locProv[0], 'loc+prov');
+          }
           // Locality ok ma provincia diversa → scarta, prova CAP
         } else {
           // Nessuna provincia nell'ordine: usa locality match diretto
@@ -2441,12 +2453,19 @@
     if (!_candidati.length) _candidati = _gcc_vettori_reg;
 
     // 2) Match fuzzy per nome tra i candidati filtrati per porto
+    var _stopW = ['transport','trasport','trasporti','trasportatori','logistic','logistica',
+                  'logistici','spedizioni','spedizionieri','spediz','cargo','freight','express',
+                  'service','servizi','italia','italian','srl','spa','snc','sas','srls'];
     var _vMatch = null; var _vBest = 0;
     _candidati.forEach(function(v) {
       var _vn = norm(v.nome); var score = 0;
       if (_vNorm === _vn) score = 3;
       else if (_vNorm.indexOf(_vn) >= 0 || _vn.indexOf(_vNorm) >= 0) score = 2;
-      else { _vn.split(/\s+/).forEach(function(p){ if(p.length>2 && _vNorm.indexOf(p)>=0) score++; }); }
+      else {
+        _vn.split(/\s+/).forEach(function(p){
+          if (p.length > 2 && _stopW.indexOf(p) < 0 && _vNorm.indexOf(p) >= 0) score++;
+        });
+      }
       if (score > _vBest) { _vBest = score; _vMatch = v; }
     });
     if (!_vMatch || _vBest === 0) {
