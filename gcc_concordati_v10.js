@@ -101,6 +101,13 @@
   var _gcc_crt_loading = false;  // true durante il fetch Gist
   var _gcc_crt_callbacks = [];   // funzioni da eseguire quando CRT è pronto
 
+  // ── Pulizia chiavi CRT legacy (ora tutto in-memory, non serve localStorage) ──
+  try {
+    ['tcp_crt_ITSPE','tcp_crt_ITLIV'].forEach(function(k){
+      if (localStorage.getItem(k) !== null) localStorage.removeItem(k);
+    });
+  } catch(e) {}
+
   // ── General Noli in-memory cache ─────────────────────────
   var _gcc_gn_rows    = [];   // tariffe GN, niente localStorage (file troppo grande)
   var _gcc_gn_add     = { ITGOA:{}, ITSPE:{}, ITLIV:{} };
