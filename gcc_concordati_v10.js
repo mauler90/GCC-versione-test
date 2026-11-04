@@ -909,6 +909,25 @@
   }
   function parsePorto(raw){ var m=raw.match(/\[([^\]]+)\]/); return m?m[1].toLowerCase():norm(raw); }
   function parseNome(raw){ return raw.replace(/^\[\d+\]\s*/,'').trim(); }
+  // Indici colonne della sotto-tabella container, letti dalle intestazioni.
+  // Ripiego sugli indici attuali se un'intestazione non viene trovata.
+  function colContainer(sub){
+    var idx = { nr:1, tipo:2, pol:4, pod:5, dt:11 };
+    try {
+      var tbl = sub.closest('table');
+      if (tbl) {
+        [].forEach.call(tbl.querySelectorAll('thead th'), function(th, k){
+          var t = norm(th.innerText);
+          if (t==='container nr') idx.nr=k;
+          else if (t==='container type') idx.tipo=k;
+          else if (t==='port of loading') idx.pol=k;
+          else if (t==='port of discharge') idx.pod=k;
+          else if (t==='pickup date') idx.dt=k;
+        });
+      }
+    } catch(e) {}
+    return idx;
+  }
   function specificity(riga){
     var score=0;
     ['delivery_place','luogo_1','luogo_2','porto_riferimento','traffic_type','committente'].forEach(function(f){
@@ -979,18 +998,19 @@
       if(nextRow){
         var sub=nextRow.querySelector('[id*="transportEquipmentsTable_data"]');
         if(sub){
+          var cc=colContainer(sub);
           sub.querySelectorAll('tr').forEach(function(ctr){
             var ctds=ctr.querySelectorAll('td'); if(ctds.length<8) return;
-            var ctr_raw=ctds[3]?ctds[3].innerText.trim():'';
-            var pL=parsePorto(ctds[5]?ctds[5].innerText.trim():'');
-            var pD=parsePorto(ctds[6]?ctds[6].innerText.trim():'');
+            var ctr_raw=ctds[cc.tipo]?ctds[cc.tipo].innerText.trim():'';
+            var pL=parsePorto(ctds[cc.pol]?ctds[cc.pol].innerText.trim():'');
+            var pD=parsePorto(ctds[cc.pod]?ctds[cc.pod].innerText.trim():'');
             containers.push({
-              containerNr:      ctds[2]?ctds[2].innerText.trim():'',
+              containerNr:      ctds[cc.nr]?ctds[cc.nr].innerText.trim():'',
               containerTypeRaw: ctr_raw,
               containerType:    parseContainerType(ctr_raw),
               portLoading:pL, portDischarge:pD,
               porto: norm(traffic)==='export'?pL:pD,
-              deliveryDT: ctds[12]?ctds[12].innerText.trim():''
+              deliveryDT: ctds[cc.dt]?ctds[cc.dt].innerText.trim():''
             });
           });
         }
@@ -1259,11 +1279,12 @@
       if(nextRow) {
         var sub = nextRow.querySelector('[id*="transportEquipmentsTable_data"]');
         if(sub) {
+          var cc2 = colContainer(sub);
           sub.querySelectorAll('tr').forEach(function(ctr) {
             var ctds = ctr.querySelectorAll('td');
             if(ctds.length < 8) return;
-            addTo(sets.porti, sugg.porti, parsePorto(ctds[5] ? ctds[5].innerText.trim() : ''));
-            addTo(sets.porti, sugg.porti, parsePorto(ctds[6] ? ctds[6].innerText.trim() : ''));
+            addTo(sets.porti, sugg.porti, parsePorto(ctds[cc2.pol] ? ctds[cc2.pol].innerText.trim() : ''));
+            addTo(sets.porti, sugg.porti, parsePorto(ctds[cc2.pod] ? ctds[cc2.pod].innerText.trim() : ''));
           });
         }
       }
@@ -3272,7 +3293,7 @@
             'var sub=nextRow.querySelector("[id*=\\"transportEquipmentsTable_data\\"]");'+
             'if(sub){'+
               'sub.querySelectorAll("tr").forEach(function(ctr){'+
-                'var cnr=ctr.querySelector("td:nth-child(3)");'+
+                'var cnr=null;ctr.querySelectorAll("td").forEach(function(c){if(c.innerText.trim()===containerNr)cnr=c;});'+
                 'if(cnr&&cnr.innerText.trim()===containerNr) sottoRiga=ctr;'+
               '});'+
             '}'+
